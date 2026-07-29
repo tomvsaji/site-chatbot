@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly REPOSITORY_URL="https://github.com/tomvsaji/site-chatbot.git"
+readonly PRODUCTION_DIR="/srv/site-chatbot"
+readonly STATE_DIR="/var/lib/site-chatbot"
+readonly DEPLOY_USER="sitechat-deploy"
+readonly SOURCE_ENV="/home/codex/site-chatbot/.env"
+readonly DEPLOY_KEY_FILE="${1:-}"
+
+if [[ "${EUID}" -ne 0 ]]; then
+  printf 'Run this installer with sudo.\n' >&2
+  exit 77
+fi
+if [[ -z "${DEPLOY_KEY_FILE}" || ! -f "${DEPLOY_KEY_FILE}" ]]; then
+  printf 'Usage: sudo %s /path/to/github-actions-public-key\n' "$0" >&2
+  exit 64
+fi
+if [[ ! -f "${SOURCE_ENV}" ]]; then
+  printf 'Production environment file not found: %s\n' "${SOURCE_ENV}" >&2
+  exit 66
+fi
+
+if ! id "${DEPLOY_USER}" >/dev/null 2>&1; then
+  useradd \
+    --system \
+    --create-home \
+    --home-dir "${STATE_DIR}" \
+    --shell /bin/bash \
+    "${DEPLOY_USER}"
+fi
+usermod -aG docker "${DEPLOY_USER}"
+
+install -d -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" -m 0700 \
+  "${STATE_DIR}/.ssh"
+install -d -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" -m 0750 \
+  "${PRODUCTION_DIR}"
+install -o root -g root -m 0755 \
+  /home/codex/site-chatbot/ops/deploy-site-chatbot \
+  /usr/local/sbin/deploy-site-chatbot
+
+public_key="$(sed -n '1p' "${DEPLOY_KEY_FILE}")"
+case "${public_key}" in
+  ssh-ed25519\ *) ;;
+  *)
+    printf 'Expected an ssh-ed25519 public key.\n' >&2
+    exit 65
+    ;;
+esac
+printf 'restrict,command="/usr/local/sbin/deploy-site-chatbot" %s\n' \
+  "${public_key}" >"${STATE_DIR}/.ssh/authorized_keys"
+chown "${DEPLOY_USER}:${DEPLOY_USER}" "${STATE_DIR}/.ssh/authorized_keys"
+chmod 0600 "${STATE_DIR}/.ssh/authorized_keys"
+
+if [[ ! -d "${PRODUCTION_DIR}/.git" ]]; then
+  if [[ -n "$(find "${PRODUCTION_DIR}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    printf 'Refusing to replace non-empty directory: %s\n' "${PRODUCTION_DIR}" >&2
+    exit 73
+  fi
+  sudo -u "${DEPLOY_USER}" git clone \
+    --branch main \
+    --single-branch \
+    "${REPOSITORY_URL}" \
+    "${PRODUCTION_DIR}"
+fi
+
+install -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" -m 0600 \
+  "${SOURCE_ENV}" \
+  "${PRODUCTION_DIR}/.env"
+
+sudo -u "${DEPLOY_USER}" git -C "${PRODUCTION_DIR}" fetch origin main
+main_sha="$(sudo -u "${DEPLOY_USER}" git -C "${PRODUCTION_DIR}" rev-parse origin/main)"
+sudo -u "${DEPLOY_USER}" git -C "${PRODUCTION_DIR}" checkout --detach --force "${main_sha}"
+
+docker compose \
+  -p site-chatbot \
+  -f "${PRODUCTION_DIR}/compose.yaml" \
+  up -d --build --remove-orphans
+
+chat_host="$(sed -n 's/^CHAT_HOST=//p' "${PRODUCTION_DIR}/.env" | tail -n 1)"
+chat_host="${chat_host%\"}"
+chat_host="${chat_host#\"}"
+for attempt in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 5 \
+    "https://${chat_host}/health" >/dev/null; then
+    printf '%s\n' "${main_sha}" >"${STATE_DIR}/deployed-sha"
+    chown "${DEPLOY_USER}:${DEPLOY_USER}" "${STATE_DIR}/deployed-sha"
+    printf 'Production checkout installed and healthy at %s.\n' "${main_sha}"
+    exit 0
+  fi
+  sleep 2
+done
+
+printf 'Production transition completed but health validation failed.\n' >&2
+exit 1

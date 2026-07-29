@@ -22,3 +22,16 @@ GitHub's `production` environment requires these secrets:
 - `VPS_KNOWN_HOSTS`
 
 The private key must correspond to the restricted public key above.
+
+For the initial production transition, run the idempotent installer from an
+interactive VPS shell after the repository and GitHub environment exist:
+
+```bash
+sudo /home/codex/site-chatbot/ops/install-vps-deployment \
+  /home/codex/.site-chatbot-deploy.pub
+```
+
+The installer creates the deployment account, installs the forced command,
+clones `main` into `/srv/site-chatbot`, copies the existing `.env` with mode
+`0600`, retains the existing `site-chatbot` Compose project/volumes, and checks
+the public health endpoint.
