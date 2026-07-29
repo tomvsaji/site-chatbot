@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -u -o pipefail
+
+readonly REPOSITORY_DIR="/srv/site-chatbot"
+readonly STATE_DIR="/var/lib/site-chatbot"
+readonly COMPOSE_PROJECT="site-chatbot"
+readonly LOCK_FILE="${STATE_DIR}/deploy.lock"
+readonly DEPLOYED_SHA_FILE="${STATE_DIR}/deployed-sha"
+
+log() {
+  printf '[site-chatbot-deploy] %s\n' "$*"
+}
+
+requested_command="${SSH_ORIGINAL_COMMAND:-${*:-}}"
+if [[ ! "${requested_command}" =~ ^deploy[[:space:]]([0-9a-f]{40})$ ]]; then
+  log "refusing command; expected: deploy <40-character commit SHA>"
+  exit 64
+fi
+requested_sha="${BASH_REMATCH[1]}"
+
+cd "${REPOSITORY_DIR}" || exit 1
+exec 9>"${LOCK_FILE}"
+if ! flock -n 9; then
+  log "another deployment is already running"
+  exit 75
+fi
+
+health_host() {
+  local host
+  host="$(sed -n 's/^CHAT_HOST=//p' .env | tail -n 1)"
+  host="${host%\"}"
+  host="${host#\"}"
+  if [[ ! "${host}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+    log "CHAT_HOST is missing or invalid"
+    return 1
+  fi
+  printf '%s' "${host}"
+}
+
+wait_for_health() {
+  local host="$1"
+  local attempt
+  for attempt in $(seq 1 30); do
+    if curl --fail --silent --show-error --max-time 5 \
+      "https://${host}/health" >/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+activate_sha() {
+  local sha="$1"
+  local host="$2"
+
+  git checkout --detach --force "${sha}" || return 1
+  docker compose -p "${COMPOSE_PROJECT}" config -q || return 1
+  docker compose -p "${COMPOSE_PROJECT}" up -d --build --remove-orphans || return 1
+  wait_for_health "${host}" || return 1
+}
+
+log "fetching origin/main"
+git fetch --quiet origin main || exit 1
+remote_main="$(git rev-parse origin/main)" || exit 1
+if [[ "${remote_main}" != "${requested_sha}" ]]; then
+  log "refusing stale or unknown deployment SHA ${requested_sha}"
+  exit 65
+fi
+
+previous_sha="$(git rev-parse HEAD)" || exit 1
+host="$(health_host)" || exit 1
+
+log "deploying ${requested_sha}"
+if activate_sha "${requested_sha}" "${host}"; then
+  printf '%s\n' "${requested_sha}" >"${DEPLOYED_SHA_FILE}"
+  log "deployment is healthy"
+  exit 0
+fi
+
+log "deployment failed; rolling back to ${previous_sha}"
+if activate_sha "${previous_sha}" "${host}"; then
+  printf '%s\n' "${previous_sha}" >"${DEPLOYED_SHA_FILE}"
+  log "rollback is healthy"
+else
+  log "rollback failed; manual recovery is required"
+fi
+exit 1

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Chat with Tom Vellavoor Saji's work, projects, and writing.">
+    <meta name="theme-color" content="#0b0c0e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Ask Tom</title>
+    <link rel="stylesheet" href="/style.css?v=2">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="intro">
+        <p class="eyebrow">TOM VELLAVOOR SAJI · LOCAL AI</p>
+        <h1>Ask Tom.</h1>
+        <p class="lede">
+          Chat with Tom's work, AI projects, and writing. A small local model
+          answers from published material and shows its sources.
+        </p>
+      </section>
+
+      <section class="chat" aria-label="Chat with this website">
+        <header class="chat-header">
+          <div class="identity">
+            <span class="avatar" aria-hidden="true">TVS</span>
+            <span><strong>Tom's AI</strong><small><i aria-hidden="true"></i> Local model online</small></span>
+          </div>
+          <button id="clear-chat" class="clear-button" type="button">Clear</button>
+        </header>
+        <div id="messages" class="messages" aria-live="polite">
+          <article class="message assistant">
+            <p>Hi! Ask me about Tom's experience, projects, or writing.</p>
+          </article>
+          <div id="suggestions" class="suggestions">
+            <button type="button" data-question="What does Tom specialize in?">Experience</button>
+            <button type="button" data-question="What side projects has Tom built?">Projects</button>
+            <button type="button" data-question="What does Tom write about?">Writing</button>
+          </div>
+        </div>
+
+        <form id="chat-form">
+          <label for="question">Your question</label>
+          <div class="composer">
+            <textarea
+              id="question"
+              name="question"
+              rows="2"
+              maxlength="800"
+              placeholder="Message Tom's AI…"
+              enterkeyhint="send"
+              required
+            ></textarea>
+            <button class="send-button" type="submit" aria-label="Send message">Send</button>
+          </div>
+          <p class="note">Local AI can make mistakes. Verify important details.</p>
+        </form>
+      </section>
+    </main>
+    <script src="/app.js?v=3" defer></script>
+  </body>
+</html>

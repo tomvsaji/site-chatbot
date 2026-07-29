@@ -1,0 +1,51 @@
+services:
+  app-dev:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /app/data
+      LLM_BASE_URL: http://llm:8080/v1
+      LLM_MODEL: ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      QDRANT_URL: http://qdrant-dev:6333
+      QDRANT_COLLECTION: site_chunks_dev
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_CACHE_DIR: /app/.cache/fastembed
+      REQUESTS_PER_MINUTE: ${REQUESTS_PER_MINUTE:-30}
+      REQUESTS_PER_HOUR: ${REQUESTS_PER_HOUR:-200}
+      MAX_MODEL_REQUESTS: "1"
+      MAX_QUESTION_CHARS: ${MAX_QUESTION_CHARS:-800}
+      MIN_SEMANTIC_SCORE: ${MIN_SEMANTIC_SCORE:-0.22}
+      MIN_LEXICAL_SCORE: ${MIN_LEXICAL_SCORE:-2.0}
+      ALLOWED_ORIGINS: http://127.0.0.1:8081,http://localhost:8081
+      SITE_NAME: ${SITE_NAME:-Ask My Site (Development)}
+    ports:
+      - 127.0.0.1:8081:8080
+    volumes:
+      - ./data:/app/data:ro
+      - embedding-dev-cache:/app/.cache/fastembed
+    mem_limit: 768m
+    depends_on:
+      qdrant-dev:
+        condition: service_started
+    networks:
+      - dev
+      - production
+
+  qdrant-dev:
+    image: qdrant/qdrant:v1.15.5
+    restart: unless-stopped
+    volumes:
+      - qdrant-dev-data:/qdrant/storage
+    mem_limit: 512m
+    networks:
+      - dev
+
+networks:
+  dev:
+  production:
+    external: true
+    name: site-chatbot_default
+
+volumes:
+  embedding-dev-cache:
+  qdrant-dev-data:

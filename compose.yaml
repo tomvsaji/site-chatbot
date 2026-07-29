@@ -1,0 +1,71 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /app/data
+      LLM_BASE_URL: http://llm:8080/v1
+      LLM_MODEL: ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-site_chunks}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_CACHE_DIR: /app/.cache/fastembed
+      REQUESTS_PER_MINUTE: ${REQUESTS_PER_MINUTE:-3}
+      REQUESTS_PER_HOUR: ${REQUESTS_PER_HOUR:-20}
+      MAX_MODEL_REQUESTS: ${MAX_MODEL_REQUESTS:-2}
+      MAX_QUESTION_CHARS: ${MAX_QUESTION_CHARS:-800}
+      MIN_SEMANTIC_SCORE: ${MIN_SEMANTIC_SCORE:-0.22}
+      MIN_LEXICAL_SCORE: ${MIN_LEXICAL_SCORE:-2.0}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://chat.srv1619516.hstgr.cloud,https://tomvsaji.com,https://www.tomvsaji.com}
+      SITE_NAME: ${SITE_NAME:-Ask My Site}
+    volumes:
+      - ./data:/app/data:ro
+      - embedding-cache:/app/.cache/fastembed
+    mem_limit: 768m
+    depends_on:
+      - llm
+      - qdrant
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.site-chat.entrypoints: websecure
+      traefik.http.routers.site-chat.rule: Host(`${CHAT_HOST}`)
+      traefik.http.routers.site-chat.tls.certresolver: letsencrypt
+      traefik.http.services.site-chat.loadbalancer.server.port: "8080"
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    restart: unless-stopped
+    volumes:
+      - qdrant-data:/qdrant/storage
+    mem_limit: 512m
+
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    restart: unless-stopped
+    command:
+      - ${LLM_MODEL_SOURCE_ARG:--hf}
+      - ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - "4096"
+      - --threads
+      - "2"
+      - --threads-batch
+      - "2"
+      - --parallel
+      - "1"
+      - --n-predict
+      - "320"
+    environment:
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - model-cache:/root/.cache
+    mem_limit: 4g
+
+volumes:
+  model-cache:
+  embedding-cache:
+  qdrant-data:
