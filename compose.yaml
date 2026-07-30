@@ -5,7 +5,7 @@ services:
     environment:
       DATA_DIR: /app/data
       LLM_BASE_URL: http://llm:8080/v1
-      LLM_MODEL: ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen3-4B-GGUF:Q4_K_M}
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-site_chunks}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
@@ -44,7 +44,7 @@ services:
     restart: unless-stopped
     command:
       - ${LLM_MODEL_SOURCE_ARG:--hf}
-      - ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      - ${LLM_MODEL:-Qwen/Qwen3-4B-GGUF:Q4_K_M}
       - --host
       - 0.0.0.0
       - --port
@@ -57,6 +57,8 @@ services:
       - "2"
       - --parallel
       - "1"
+      - --reasoning
+      - ${LLM_REASONING:-off}
       - --n-predict
       - "320"
     environment:

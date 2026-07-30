@@ -1,0 +1,234 @@
+{
+  "model": "llama-3.2-3b-instruct-q4_k_m-screen",
+  "suite_version": 2,
+  "cases_path": "/app/tests/eval_cases.json",
+  "turns": 9,
+  "passed": 4,
+  "pass_rate": 0.4444444444444444,
+  "mean_score": 0.6000000000000001,
+  "latency_seconds": {
+    "median": 30.956674457527697,
+    "p95": 38.76402915548533,
+    "max": 38.76402915548533
+  },
+  "results": [
+    {
+      "scenario_id": "writing-catalog",
+      "turn_id": "topics",
+      "question": "What does Tom write about?",
+      "answer": "AI engineering, agent systems, and building production-ready LLM products [1]\n\nBuilding Reliable SQL Agents in Complex On-Prem SQL Environments [1]\n\nHow a SQL Agent Thinks: Walking Through the Explorer Pattern [1]\n\nArticles and notes on AI engineering, agent systems, and building production-ready LLM products [1]\n\nAgentic architectures \u2014 multi-agent orchestration, evaluation pipelines, and the infrastructure that makes agents trustworthy in real deployments [3]",
+      "sources": [
+        {
+          "number": 1,
+          "name": "site-writing.md",
+          "title": "Tom Vellavoor Saji \u2014 Writing",
+          "heading": "",
+          "url": "https://tomvsaji.com/blogs",
+          "score": 0.016
+        },
+        {
+          "number": 3,
+          "name": "site-about.md",
+          "title": "Tom Vellavoor Saji \u2014 About",
+          "heading": "",
+          "url": "https://tomvsaji.com/about",
+          "score": 0.016
+        }
+      ],
+      "duration_seconds": 38.36380335595459,
+      "score": 1.0,
+      "passed": true,
+      "failures": [],
+      "concepts_found": [
+        "AI engineering",
+        "agent systems",
+        "production LLM products"
+      ]
+    },
+    {
+      "scenario_id": "writing-catalog",
+      "turn_id": "post-list",
+      "question": "What are some of his blog posts?",
+      "answer": "posts/dreamer-personal-agent-os.md [1]\n\nhttps://blog.singleton.io/posts/2026-02-17-introducing-dreamer/ [1]\n\nhttps://blog.singleton.io/posts/2026-03-17-community-is-a-product-decision/ [1]",
+      "sources": [
+        {
+          "number": 1,
+          "name": "posts/dreamer-personal-agent-os.md",
+          "title": "Dreamer: The Personal Agent OS That Wants To Run Your Day",
+          "heading": "Why Dreamer Matters",
+          "url": "https://tomvsaji.com/blogs/dreamer-personal-agent-os",
+          "score": 0.032
+        }
+      ],
+      "duration_seconds": 31.23667386174202,
+      "score": 0.0,
+      "passed": false,
+      "failures": [
+        "missing source 'site-writing.md'",
+        "concept coverage 0/5; minimum is 4",
+        "too concise: 15 words; minimum is 25"
+      ],
+      "concepts_found": []
+    },
+    {
+      "scenario_id": "composer-explanation",
+      "turn_id": "article-overview",
+      "question": "Tell me about the lessons for AI engineers blog.",
+      "answer": "Composer 2 is a useful blueprint for people building specialized AI systems. [1] [2]\n\nBuild your own domain benchmark [2]\n\nAI engineers can learn from the specialization, RL setup, and infra choices of Composer 2. [2]",
+      "sources": [
+        {
+          "number": 1,
+          "name": "posts/composer-2-vs-claude-codex.md",
+          "title": "Composer 2 vs Claude & Codex: Why Cursor\u2019s Model Is So Efficient (and What AI Engineers Can Learn)",
+          "heading": "4. Lessons for AI engineers",
+          "url": "https://tomvsaji.com/blogs/composer-2-vs-claude-codex",
+          "score": 0.031
+        },
+        {
+          "number": 2,
+          "name": "posts/composer-2-vs-claude-codex.md",
+          "title": "Composer 2 vs Claude & Codex: Why Cursor\u2019s Model Is So Efficient (and What AI Engineers Can Learn)",
+          "heading": "4. Lessons for AI engineers \u203a 4.5. Build your own domain benchmark",
+          "url": "https://tomvsaji.com/blogs/composer-2-vs-claude-codex",
+          "score": 0.031
+        }
+      ],
+      "duration_seconds": 38.76402915548533,
+      "score": 0.4,
+      "passed": false,
+      "failures": [
+        "concept coverage 2/5; minimum is 3",
+        "too concise: 32 words; minimum is 65"
+      ],
+      "concepts_found": [
+        "workflow specialization",
+        "domain benchmark"
+      ]
+    },
+    {
+      "scenario_id": "composer-explanation",
+      "turn_id": "meaning-follow-up",
+      "question": "What does this mean: Composer 2 is not just a product launch; it is a useful blueprint for people building specialized AI systems?",
+      "answer": "Composer 2 is not just a product launch. It is a useful blueprint for people building specialized AI systems. [1]",
+      "sources": [
+        {
+          "number": 1,
+          "name": "posts/composer-2-vs-claude-codex.md",
+          "title": "Composer 2 vs Claude & Codex: Why Cursor\u2019s Model Is So Efficient (and What AI Engineers Can Learn)",
+          "heading": "4. Lessons for AI engineers",
+          "url": "https://tomvsaji.com/blogs/composer-2-vs-claude-codex",
+          "score": 0.033
+        }
+      ],
+      "duration_seconds": 21.67272084672004,
+      "score": 0.25,
+      "passed": false,
+      "failures": [
+        "concept coverage 1/4; minimum is 3",
+        "contains forbidden phrase 'not just a product launch. It is a useful blueprint'",
+        "too concise: 19 words; minimum is 55"
+      ],
+      "concepts_found": [
+        "product and infrastructure"
+      ]
+    },
+    {
+      "scenario_id": "composer-explanation",
+      "turn_id": "efficiency-why",
+      "question": "Why is it so efficient according to Tom?",
+      "answer": "The most efficient AI systems are often not the most general ones. They are the ones built with unusually tight alignment between model, environment, rewards, infrastructure, and product goals. [4]\n\nCursor\u2019s Composer 2 gets close to Claude and Codex-class coding quality at much lower cost, and what AI engineers can learn from its specialization, RL setup, and infra choices. [4]",
+      "sources": [
+        {
+          "number": 4,
+          "name": "site-home.md",
+          "title": "Tom Vellavoor Saji \u2014 Home",
+          "heading": "",
+          "url": "https://tomvsaji.com/",
+          "score": 0.015
+        }
+      ],
+      "duration_seconds": 30.956674457527697,
+      "score": 0.5,
+      "passed": false,
+      "failures": [
+        "missing source 'posts/composer-2-vs-claude-codex.md'",
+        "concept coverage 3/6; minimum is 4",
+        "too concise: 58 words; minimum is 75"
+      ],
+      "concepts_found": [
+        "narrow coding specialization",
+        "production-oriented rewards",
+        "lower-cost positioning"
+      ]
+    },
+    {
+      "scenario_id": "composer-explanation",
+      "turn_id": "efficiency-clarification",
+      "question": "But why does specialization itself make it more efficient?",
+      "answer": "The most efficient AI systems are often not the most general ones. [2]\n\nThey are the ones built with unusually tight alignment between model, environment, rewards, infrastructure, and product goals. [2]\n\nSpecialization itself makes it more efficient because it allows for shared runtime across training and product, evaluation tied to actual coding work, and a narrow domain focus. [1] [2]",
+      "sources": [
+        {
+          "number": 2,
+          "name": "posts/composer-2-vs-claude-codex.md",
+          "title": "Composer 2 vs Claude & Codex: Why Cursor\u2019s Model Is So Efficient (and What AI Engineers Can Learn)",
+          "heading": "4. Lessons for AI engineers \u203a 4.5. Build your own domain benchmark",
+          "url": "https://tomvsaji.com/blogs/composer-2-vs-claude-codex",
+          "score": 0.03
+        },
+        {
+          "number": 1,
+          "name": "posts/composer-2-vs-claude-codex.md",
+          "title": "Composer 2 vs Claude & Codex: Why Cursor\u2019s Model Is So Efficient (and What AI Engineers Can Learn)",
+          "heading": "3. Why Composer 2 can rival Claude and Codex at lower cost",
+          "url": "https://tomvsaji.com/blogs/composer-2-vs-claude-codex",
+          "score": 0.031
+        }
+      ],
+      "duration_seconds": 36.19808400794864,
+      "score": 0.25,
+      "passed": false,
+      "failures": [
+        "concept coverage 1/4; minimum is 3"
+      ],
+      "concepts_found": [
+        "concentrates investment"
+      ]
+    },
+    {
+      "scenario_id": "out-of-scope",
+      "turn_id": "favorite-food",
+      "question": "What is Tom's favorite food?",
+      "answer": "I couldn't find that in Tom's published site data.",
+      "sources": [],
+      "duration_seconds": 0.015504448674619198,
+      "score": 1.0,
+      "passed": true,
+      "failures": [],
+      "concepts_found": []
+    },
+    {
+      "scenario_id": "out-of-scope",
+      "turn_id": "current-weather",
+      "question": "What is the weather in Doha today?",
+      "answer": "I couldn't find that in Tom's published site data.",
+      "sources": [],
+      "duration_seconds": 18.30023063160479,
+      "score": 1.0,
+      "passed": true,
+      "failures": [],
+      "concepts_found": []
+    },
+    {
+      "scenario_id": "out-of-scope",
+      "turn_id": "consulting-price",
+      "question": "How much does Tom charge for consulting?",
+      "answer": "I couldn't find that in Tom's published site data.",
+      "sources": [],
+      "duration_seconds": 18.729330931790173,
+      "score": 1.0,
+      "passed": true,
+      "failures": [],
+      "concepts_found": []
+    }
+  ]
+}

@@ -54,6 +54,7 @@ class AppLogicTests(unittest.TestCase):
         )
         self.assertFalse(app.is_follow_up("Who won the latest World Cup?"))
         self.assertTrue(app.is_follow_up("What does that one use?"))
+        self.assertTrue(app.is_follow_up("Walk me through the process."))
 
     def test_validated_answer_formats_only_cited_sources(self):
         matches = [
@@ -107,6 +108,25 @@ class AppLogicTests(unittest.TestCase):
         self.assertTrue(app.wants_detailed_answer("How does the system work?"))
         self.assertFalse(app.wants_detailed_answer("What is Tom's role?"))
         self.assertTrue(app.is_list_question("Which organizations are listed?"))
+        self.assertTrue(app.is_writing_catalog_question("What are his blog posts?"))
+
+    def test_article_topic_is_carried_across_follow_ups(self):
+        history = [
+            {"role": "user", "content": "Tell me about Composer 2."},
+            {"role": "assistant", "content": "It is a specialized coding model."},
+            {"role": "user", "content": "Why is it efficient?"},
+            {"role": "assistant", "content": "It has a narrow focus."},
+        ]
+        self.assertEqual(
+            app.infer_topic_source(
+                "But why does specialization itself help?", history
+            ),
+            "posts/composer-2-vs-claude-codex.md",
+        )
+        self.assertEqual(
+            app.infer_topic_source("What role does Sidekick play in it?", []),
+            "posts/dreamer-personal-agent-os.md",
+        )
 
     def test_invalid_or_unanswerable_model_output_is_never_exposed(self):
         self.assertEqual(

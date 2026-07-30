@@ -5,7 +5,7 @@ A small, self-hosted “chat with my data” demonstration for this VPS. It comb
 - a small Python web application;
 - heading-aware hybrid BM25 and vector retrieval over approved Markdown, text, and JSON files;
 - FastEmbed embeddings stored persistently in Qdrant;
-- a CPU-only, quantized IBM Granite 4.0 1B model served by llama.cpp;
+- a CPU-only, quantized Qwen3 4B model served by llama.cpp;
 - HTTPS routing through the VPS's existing Traefik instance.
 
 The browser never talks to the model directly. The model container has no
@@ -79,6 +79,10 @@ unsupported questions, prompt injection, topic changes, and latency. See
 `tests/EVAL_SET.md` for the cases, scoring rules, core-suite filter, and
 model-comparison commands.
 
+The local-model and RAG comparison is documented in
+`MODEL_EVALUATION_REPORT.md`, with machine-readable results under
+`eval-results/`.
+
 The browser uses `POST /api/chat/stream`, which returns Server-Sent Events:
 `status` while retrieval/generation runs, individually validated `claim` events,
 then a `final` answer with sources. The original JSON `POST /api/chat` endpoint
@@ -110,7 +114,7 @@ curl https://chat.srv1619516.hstgr.cloud/health
   Add an upstream challenge if the endpoint attracts sustained distributed abuse.
 - Back up `data/` and pin container images to tested immutable digests.
 - Retrieval uses reciprocal-rank fusion to combine semantic Qdrant results with
-  exact-term BM25 matches, followed by a relevance gate. Granite must return
+  exact-term BM25 matches, followed by a relevance gate. The model must return
   schema-constrained cited claims; malformed or unsupported output is discarded.
 - Ad revenue is unlikely to justify abuse and inference costs at small scale.
   Start with a useful portfolio feature, measure demand, then decide whether to
