@@ -5,14 +5,14 @@ services:
     environment:
       DATA_DIR: /app/data
       LLM_BASE_URL: http://llm:8080/v1
-      LLM_MODEL: ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      LLM_MODEL: LiquidAI/LFM3-1.7B
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-site_chunks}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
       EMBEDDING_CACHE_DIR: /app/.cache/fastembed
       REQUESTS_PER_MINUTE: ${REQUESTS_PER_MINUTE:-3}
       REQUESTS_PER_HOUR: ${REQUESTS_PER_HOUR:-20}
-      MAX_MODEL_REQUESTS: ${MAX_MODEL_REQUESTS:-2}
+      MAX_MODEL_REQUESTS: ${MAX_MODEL_REQUESTS:-1}
       MAX_QUESTION_CHARS: ${MAX_QUESTION_CHARS:-800}
       MIN_SEMANTIC_SCORE: ${MIN_SEMANTIC_SCORE:-0.22}
       MIN_LEXICAL_SCORE: ${MIN_LEXICAL_SCORE:-2.0}
@@ -21,6 +21,8 @@ services:
     volumes:
       - ./data:/app/data:ro
       - embedding-cache:/app/.cache/fastembed
+    ports:
+      - 127.0.0.1:8082:8080
     mem_limit: 768m
     depends_on:
       - llm
@@ -40,11 +42,13 @@ services:
     mem_limit: 512m
 
   llm:
-    image: ghcr.io/ggml-org/llama.cpp:server
+    image: ghcr.io/ggml-org/llama.cpp:server-b11960@sha256:8052c13edd987de8858f8150031e025ac3d66823f09cf3ec8220899c4abce220
     restart: unless-stopped
     command:
-      - ${LLM_MODEL_SOURCE_ARG:--hf}
-      - ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      - -m
+      - /models/LFM3-1.7B-Q4_K_M.gguf
+      - --alias
+      - LiquidAI/LFM3-1.7B
       - --host
       - 0.0.0.0
       - --port
@@ -57,15 +61,16 @@ services:
       - "2"
       - --parallel
       - "1"
+      - --reasoning
+      - "off"
       - --n-predict
-      - "320"
+      - "512"
     environment:
       HF_HOME: /root/.cache/huggingface
     volumes:
-      - model-cache:/root/.cache
-    mem_limit: 4g
+      - ./models:/models:ro
+    mem_limit: 2500m
 
 volumes:
-  model-cache:
   embedding-cache:
   qdrant-data:

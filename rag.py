@@ -102,6 +102,7 @@ def _document_parts(text: str) -> tuple[str, str, list[tuple[str, str]]]:
     headings: list[str] = []
     blocks: list[tuple[str, str]] = []
     paragraph: list[str] = []
+    in_reference_details = False
 
     def flush() -> None:
         if not paragraph:
@@ -113,6 +114,15 @@ def _document_parts(text: str) -> tuple[str, str, list[tuple[str, str]]]:
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
+        if line.lower().startswith(":::details references"):
+            flush()
+            in_reference_details = True
+            continue
+        if in_reference_details:
+            if line == ":::":
+                in_reference_details = False
+            continue
+
         source_match = SOURCE_RE.match(line)
         if source_match:
             url = source_match.group(1).rstrip(".,)")

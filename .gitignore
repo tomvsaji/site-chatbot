@@ -21,3 +21,5 @@ venv/
 
 compose.override.yaml
 compose.local.yaml
+
+models/

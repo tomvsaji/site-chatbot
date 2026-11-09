@@ -1,6 +1,8 @@
 import sys
 import types
 import unittest
+import io
+from unittest.mock import patch
 from types import SimpleNamespace
 
 vector_store_stub = types.ModuleType("vector_store")
@@ -15,6 +17,26 @@ from rag import Chunk
 
 
 class AppLogicTests(unittest.TestCase):
+    def test_connection_reset_returns_clear_inference_error(self):
+        with patch("app.urllib.request.urlopen", side_effect=ConnectionResetError):
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                app.call_language_model({})
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                list(app.stream_language_model({}))
+
+    def test_null_completion_returns_clear_inference_error(self):
+        response = io.BytesIO(b'{"choices":[{"message":{"content":null}}]}')
+        with patch("app.urllib.request.urlopen", return_value=response):
+            with self.assertRaisesRegex(RuntimeError, "unexpected response"):
+                app.call_language_model({})
+
+    def test_incomplete_stream_returns_clear_inference_error(self):
+        response = io.BytesIO(b'data: {"choices":[{"delta":{"content":"partial"}}]}\n')
+        with patch("app.urllib.request.urlopen", return_value=response):
+            with self.assertRaisesRegex(RuntimeError, "ended unexpectedly"):
+                list(app.stream_language_model({}))
+
+
     def test_limiter_enforces_minute_window_and_recovers(self):
         limiter = app.SlidingWindowLimiter(per_minute=2, per_hour=10)
         self.assertTrue(limiter.allow("192.0.2.1", now=0)[0])
@@ -54,6 +76,7 @@ class AppLogicTests(unittest.TestCase):
         )
         self.assertFalse(app.is_follow_up("Who won the latest World Cup?"))
         self.assertTrue(app.is_follow_up("What does that one use?"))
+        self.assertTrue(app.is_follow_up("Walk me through the process."))
 
     def test_validated_answer_formats_only_cited_sources(self):
         matches = [
@@ -107,6 +130,25 @@ class AppLogicTests(unittest.TestCase):
         self.assertTrue(app.wants_detailed_answer("How does the system work?"))
         self.assertFalse(app.wants_detailed_answer("What is Tom's role?"))
         self.assertTrue(app.is_list_question("Which organizations are listed?"))
+        self.assertTrue(app.is_writing_catalog_question("What are his blog posts?"))
+
+    def test_article_topic_is_carried_across_follow_ups(self):
+        history = [
+            {"role": "user", "content": "Tell me about Composer 2."},
+            {"role": "assistant", "content": "It is a specialized coding model."},
+            {"role": "user", "content": "Why is it efficient?"},
+            {"role": "assistant", "content": "It has a narrow focus."},
+        ]
+        self.assertEqual(
+            app.infer_topic_source(
+                "But why does specialization itself help?", history
+            ),
+            "posts/composer-2-vs-claude-codex.md",
+        )
+        self.assertEqual(
+            app.infer_topic_source("What role does Sidekick play in it?", []),
+            "posts/dreamer-personal-agent-os.md",
+        )
 
     def test_invalid_or_unanswerable_model_output_is_never_exposed(self):
         self.assertEqual(

@@ -18,3 +18,5 @@ venv
 eval-results
 compose.override.yaml
 compose.local.yaml
+
+models/

@@ -118,6 +118,7 @@ async function sendQuestion(question) {
     pending.remove();
     addMessage(result.answer, "assistant", result.sources);
     history.push({ role: "assistant", content: result.answer });
+    history.splice(0, Math.max(0, history.length - 8));
   } catch (error) {
     pending.remove();
     addMessage(error.message, "error");
