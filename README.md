@@ -106,6 +106,19 @@ docker compose logs --tail=100 app llm
 curl https://chat.srv1619516.hstgr.cloud/health
 ```
 
+## Native widget abuse controls
+
+See [SECURITY.md](SECURITY.md) for the request contract, proxy trust boundaries,
+bounded quotas and HTTP resources, optional Turnstile setup, production release
+checklist, and rollback. New settings are wired in `compose.yaml` and
+`.env.example`. Proxy trust defaults to empty and challenges default to off;
+configure verified Traefik peers before relying on per-visitor quotas.
+In-memory quotas apply to one process and reset on restart.
+The standalone `/` UI (`static/app.js`) has no Turnstile flow, so enabling
+`TURNSTILE_REQUIRED` blocks its chat submissions. It has no challenge exemption;
+the main native frontend supplies tokens independently. See the
+[Turnstile compatibility details](SECURITY.md#optional-turnstile).
+
 ## Production notes
 
 - This 2-vCPU server is suitable for a demo and light personal traffic, not many

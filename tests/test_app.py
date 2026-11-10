@@ -58,10 +58,13 @@ class AppLogicTests(unittest.TestCase):
             app.client_ip("not-an-ip", "192.0.2.10"),
             "192.0.2.10",
         )
-        self.assertEqual(
-            app.client_ip("2001:db8::1, 192.0.2.10", "192.0.2.10"),
-            "2001:db8::1",
-        )
+        # Forwarding headers are effective only with explicit proxy trust.
+        import ipaddress
+        with patch.object(app, "TRUSTED_PROXY_CIDRS", (ipaddress.ip_network("192.0.2.10/32"),)):
+            self.assertEqual(
+                app.client_ip("2001:db8::1, 192.0.2.10", "192.0.2.10"),
+                "2001:db8::1",
+            )
 
     def test_follow_up_search_uses_previous_user_question(self):
         history = [

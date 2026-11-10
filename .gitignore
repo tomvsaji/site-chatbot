@@ -23,3 +23,6 @@ compose.override.yaml
 compose.local.yaml
 
 models/
+
+# Local test-run evidence; summarized in IMPLEMENTATION_REPORT.md.
+test-logs/
