@@ -369,7 +369,10 @@ class AdditionalHTTPTests(HTTPHarness):
 
     def test_http09_is_rejected_without_worker_or_timer_leak(self):
         with self.bounded_connection() as (client, server, timers, errors):
-            client.sendall(b'GET /\r\n')
+            # Python 3.12 still parses headers after a versionless GET; 3.14
+            # returns immediately. End the empty header block explicitly so
+            # this tests rejection, independently of EOF or the input deadline.
+            client.sendall(b'GET /\r\n\r\n')
             with client.makefile('rb') as reader:
                 response = reader.read()
             for thread in server._threads:
@@ -382,6 +385,25 @@ class AdditionalHTTPTests(HTTPHarness):
             self.assertNotIn(b'<!DOCTYPE', response)
             self.assertEqual(len(timers), 1)
         self.answer.assert_not_called()
+
+    def test_stalled_incomplete_request_releases_worker_and_timer_at_input_deadline(self):
+        with patch.object(app, 'REQUEST_READ_TIMEOUT', 0.15):
+            with self.bounded_connection() as (client, server, timers, errors):
+                started = time.monotonic()
+                # No header boundary or EOF: both parsers must wait for input.
+                client.sendall(b'GET / HTTP/1.1\r\nHost: localhost')
+                with client.makefile('rb') as reader:
+                    response = reader.read()
+                elapsed = time.monotonic() - started
+                self.assertGreaterEqual(elapsed, 0.14)
+                self.assertLess(elapsed, 1.5)
+                # Timer shutdown may produce a 400, or the socket timeout may
+                # close first. Neither path may dispatch the incomplete request.
+                self.assertTrue(not response or response.startswith(b'HTTP/1.1 400 '))
+                errors.assert_not_called()
+                self.assertEqual(len(timers), 1)
+        self.answer.assert_not_called()
+        self.assertEqual(self.request('{"question":"q"}')[0], 200)
 
     def test_blocked_writer_times_out_and_recovers_connection_and_model_slots(self):
         large_result = {'answer': 'x' * (4 * 1024 * 1024), 'sources': []}

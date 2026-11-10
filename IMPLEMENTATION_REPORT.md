@@ -165,6 +165,60 @@ git diff --cached --check
 # both exit 0; no output
 ```
 
+### Python 3.12 CI portability correction
+
+The preceding local 55-test results used Python 3.14.9. The parent reported
+GitHub Actions run `42788876352` failing the HTTP/0.9 regression on Python
+3.12.16, the Docker/CI target minor version. This pass reproduced that exact
+test failure locally with `/usr/bin/python3` (3.12.3): one test, one
+`TimeoutError` at `reader.read()`, 2.005s. See
+`test-logs/09-python312-http09-red.log`.
+
+Inspection of both installed stdlib implementations explains the difference:
+3.12 `BaseHTTPRequestHandler.parse_request()` calls `http.client.parse_headers`
+even for a two-word versionless GET, waiting for a blank line or EOF. Version
+3.14 instead sets `headers = {}` and returns immediately for HTTP/0.9. Sending
+only `GET /\r\n` and leaving the write side open therefore blocked 3.12 until
+the client's 2-second timeout, before the server's 15-second input deadline.
+`09-python312-parser-trace.log` records the worker blocked in
+`HeaderBudgetReader.readline` / socket `recv_into`, no response before the
+deadline, and worker/timer termination with no worker error under a 0.3-second
+test input deadline. This is a test-framing portability issue; no application
+validation or timeout change was needed.
+
+The rejection fixture now sends `GET /\r\n\r\n`: the explicit empty header
+boundary lets both parsers reach the existing application HTTP/0.9 rejection.
+Write-half shutdown would also provide EOF to 3.12 while leaving response reads
+open, but the prior harness attempts established that this sandbox denies it;
+the blank boundary requires no half-close or sandbox bypass. The original
+framed 505, generic JSON, connection close, no inference, no worker error,
+worker exit, connection-slot recovery and timer cleanup assertions remain.
+
+A separate regression leaves a real HTTP/1.1 request's header block incomplete,
+without a blank line or EOF, on both runtimes. With the input timeout patched to
+0.15 seconds, it checks closure within 1.5 seconds, no successful dispatch,
+worker/connection-slot/timer cleanup and a successful subsequent request.
+The existing trickled-header/body regression still exercises the absolute
+deadline against continuing input. No test was skipped or removed, and the
+client timeout was not increased. `app.py` is unchanged by this pass.
+
+Actual verification from this pass:
+
+| Command | Result | Log in `test-logs/` |
+| --- | --- | --- |
+| `PYTHONPATH=tests /usr/bin/python3 -m unittest test_security.AdditionalHTTPTests.test_http09_is_rejected_without_worker_or_timer_leak test_security.AdditionalHTTPTests.test_stalled_incomplete_request_releases_worker_and_timer_at_input_deadline -v` | 2 passed, 0.157s | `09-python312-focused-green.log` |
+| `/usr/bin/python3 -m unittest discover -s tests -v` | 56 passed, 2.131s | `09-python312-full.log` |
+| `python3 -m unittest discover -s tests -v` | 56 passed, 2.107s | `09-python314-full.log` |
+| `/usr/bin/python3 -m compileall -q app.py rag.py vector_store.py evaluate.py sync_site.py tests` | exit 0, no output | `09-python312-compile.log` |
+| `python3 -m compileall -q app.py rag.py vector_store.py evaluate.py sync_site.py tests` | exit 0, no output | `09-python314-compile.log` |
+| `git diff --check` | exit 0, no output | `09-diff-check.log` |
+
+These are local Python 3.12.3 / 3.14.9 results, not a new GitHub CI result.
+The existing `.gitignore` excludes `test-logs/`; logs remain local evidence.
+The parent must review/push and verify the next GitHub run on 3.12.16. This pass
+made no commit, push, deployment, authentication or frontend change; changes
+remain unstaged on `feat/native-widget-security`.
+
 ### Separately reported verification (not rerun in this correction pass)
 
 The parent independently ran the preceding 50-test suite and a real loopback

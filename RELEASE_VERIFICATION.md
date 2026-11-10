@@ -8,7 +8,7 @@ The live checkout `/srv/site-chatbot` was not modified. Its existing source chan
 
 ## Independently executed verification
 
-- `python3 -m unittest discover -s tests -v`: **55 passed**.
+- `python3 -m unittest discover -s tests -v`: **56 passed** on Python 3.12.3 and Python 3.14.9 after the CI portability correction. GitHub CI targets Python 3.12; its initial run exposed a test-framing difference. The versionless-GET test now explicitly terminates its empty headers, and a separate stalled-request test preserves deadline/worker cleanup coverage. Production handler code was unchanged by this correction.
 - `python3 -m compileall -q app.py tests`: passed.
 - `git diff --cached --check`: passed after keeping raw local test logs out of Git.
 - Added-Python-line security scan: no matches for hardcoded credentials, shell injection patterns, eval/exec, or unsafe pickle loads. A pattern scan is not proof of security.
