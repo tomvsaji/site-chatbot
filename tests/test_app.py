@@ -92,3 +92,24 @@ class SessionHTTPTests(unittest.TestCase):
         self.assertEqual(status,200)
         memory.delete.assert_called_once_with(old_key)
         self.assertNotEqual(new_cookie.split(';')[0],cookie.split(';')[0])
+
+    def test_reset_obeys_challenge_and_quota_before_deleting_memory(self):
+        from unittest.mock import patch,Mock
+        memory=Mock()
+        with patch('app.agent.store',return_value=memory), patch('app.verify_turnstile',return_value=403):
+            self.assertEqual(self.post('/api/conversation/reset',body={})[0],403)
+        memory.delete.assert_not_called()
+        with patch('app.agent.store',return_value=memory), patch('app.admit_inference',return_value=(False,15)):
+            self.assertEqual(self.post('/api/conversation/reset',body={})[0],429)
+        memory.delete.assert_not_called()
+
+    def test_safe_agent_error_is_clear_while_unexpected_errors_stay_private(self):
+        from unittest.mock import patch
+        with patch('app.agent.run_agent',side_effect=app.agent.AgentError('This conversation reached its limit. Start a new conversation.')):
+            status,_,body=self.post()
+        self.assertEqual(status,503)
+        self.assertIn(b'Start a new conversation',body)
+        with patch('app.agent.run_agent',side_effect=RuntimeError('private provider detail')):
+            status,_,body=self.post()
+        self.assertEqual(status,503)
+        self.assertNotIn(b'private provider detail',body)
