@@ -200,6 +200,7 @@ def _run_agent(question, session, index, emit=lambda *_: None):
         reasoning = ''
         calls = {}
         finish = None
+        last_progress = time.monotonic()
         for choice in stream_completion(request, timeout=min(180, max(1, 240 - (time.monotonic() - started)))):
             delta = choice.get('delta', {})
             finish = choice.get('finish_reason') or finish
@@ -215,8 +216,11 @@ def _run_agent(question, session, index, emit=lambda *_: None):
             text = delta.get('content')
             if isinstance(text, str) and text:
                 content += text
-                if not calls:
-                    emit('delta', {'text': text})
+                # LFM3 may emit reasoning in content despite thinking=False.
+                # Never expose a provisional prefix before we can classify it.
+                if time.monotonic() - last_progress >= 3:
+                    emit('status', {'message': 'Generating an answer…'})
+                    last_progress = time.monotonic()
         if finish == 'length':
             raise AgentError('The assistant exceeded its response limit. Please ask a shorter or more specific question.')
         if calls:
@@ -234,6 +238,8 @@ def _run_agent(question, session, index, emit=lambda *_: None):
                     result = execute_tool(call, session, index, sources, seen, emit)
                 messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': json.dumps(result, ensure_ascii=False)})
             continue
+        if '</think>' in content:
+            content = content.rsplit('</think>', 1)[1]
         answer = normalize_citations(content.strip())
         if not answer or '<tool_call>' in answer or '<think>' in answer:
             raise AgentError('The assistant returned an invalid response. Please try again.')
@@ -246,6 +252,7 @@ def _run_agent(question, session, index, emit=lambda *_: None):
             messages.append({'role': 'user', 'content': 'The previous reply cited unavailable sources. Search the site to obtain evidence and current citation numbers before answering factual questions. For a summary of our conversation, omit website citation numbers. Correct the reply to my original question without mentioning this check.'})
             continue
         result = {'answer': answer, 'sources': [sources[n] for n in cited]}
+        emit('delta', {'text': answer})
         store().append(session, [{'role': 'user', 'content': question}, {'role': 'assistant', 'content': answer}], index.embedder)
         return result
     raise AgentError('The assistant exceeded its search budget. Please try a more specific question.')

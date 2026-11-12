@@ -148,6 +148,22 @@ class AgentTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'response limit'):
                 agent.run_agent('question','a',self.index)
 
+    def test_reasoning_prefix_never_reaches_client_events_or_memory(self):
+        events=[]
+        with patch('agent.stream_completion',return_value=iter(completion('private reasoning</think>Visible answer.'))):
+            result=agent.run_agent('question','a',self.index,lambda e,d:events.append((e,d)))
+        self.assertEqual(result['answer'],'Visible answer.')
+        self.assertNotIn('private reasoning',str(events))
+        self.assertNotIn('private reasoning',str(self.memory.snapshot('a')['messages']))
+
+    def test_unclosed_reasoning_is_not_streamed_or_saved(self):
+        events=[]
+        with patch('agent.stream_completion',return_value=iter(completion('<think>private reasoning'))):
+            with self.assertRaisesRegex(RuntimeError,'invalid response'):
+                agent.run_agent('question','a',self.index,lambda e,d:events.append((e,d)))
+        self.assertFalse(any(e=='delta' for e,d in events))
+        self.assertEqual(self.memory.snapshot('a')['messages'],[])
+
     def test_disconnect_is_an_error(self):
         response=io.BytesIO(b'data: {"choices":[{"delta":{"content":"partial"}}]}\n')
         with patch('agent.urllib.request.urlopen',return_value=response):
