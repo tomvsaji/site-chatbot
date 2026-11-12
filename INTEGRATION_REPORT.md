@@ -82,3 +82,17 @@ prepares `TRUSTED_PROXY_CIDRS=172.16.3.1/32`; no secrets or challenge keys chang
 This gives automated deployment a valid native-agent rollback commit instead
 of the old Granite baseline. Final main-branch CI/release status is available
 on PR #3 and GitHub Actions.
+
+
+## Restrictive-permission deployment correction
+
+The first main release passed tests and image publication but its VPS source
+build copied 0660 files from the checkout ACL, preventing UID 10001 from reading
+app.py. The service was restored with the already-tested matching image; runtime
+source bytes were verified against a4a87ae and the checkout/release record aligned.
+A Dockerfile correction normalizes copied public-source readability before USER
+appuser. A separate build fixture with 0660 files / 0770 directories reproduced
+the host modes and confirmed app, agent, memory, all static files and knowledge
+sources are readable as UID 10001. CI now builds under those restrictive modes
+and runs the same non-root import/readability check, preventing this gap from
+passing validation again. No private memory, .env or credentials enter the image.
