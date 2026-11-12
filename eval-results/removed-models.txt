@@ -1,0 +1,9 @@
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--ibm-granite--granite-4.0-1b-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--ggml-org--gemma-3-1b-it-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--Qwen--Qwen3-4B-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--bartowski--Llama-3.2-3B-Instruct-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--unsloth--Phi-4-mini-instruct-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--ggml-org--gemma-3-4b-it-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--ggml-org--SmolLM3-3B-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--ibm-granite--granite-4.0-micro-GGUF
+/var/lib/docker/volumes/site-chatbot_model-cache/_data/huggingface/hub/models--AtomicChat--Qwen3.5-4B-GGUF

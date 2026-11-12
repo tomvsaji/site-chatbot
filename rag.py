@@ -102,6 +102,7 @@ def _document_parts(text: str) -> tuple[str, str, list[tuple[str, str]]]:
     headings: list[str] = []
     blocks: list[tuple[str, str]] = []
     paragraph: list[str] = []
+    in_reference_details = False
 
     def flush() -> None:
         if not paragraph:
@@ -113,6 +114,15 @@ def _document_parts(text: str) -> tuple[str, str, list[tuple[str, str]]]:
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
+        if line.lower().startswith(":::details references"):
+            flush()
+            in_reference_details = True
+            continue
+        if in_reference_details:
+            if line == ":::":
+                in_reference_details = False
+            continue
+
         source_match = SOURCE_RE.match(line)
         if source_match:
             url = source_match.group(1).rstrip(".,)")
@@ -188,7 +198,7 @@ def _split_block(text: str, max_tokens: int, overlap: int) -> list[str]:
 
 
 def _chunk_text(
-    text: str, max_tokens: int = 140, overlap: int = 20
+    text: str, max_tokens: int = 100, overlap: int = 12
 ) -> tuple[str, str, list[tuple[str, str]]]:
     """Build short Markdown-aware chunks safe for MiniLM's 256-wordpiece limit."""
     title, url, blocks = _document_parts(text)

@@ -1,0 +1,31 @@
+test_article_topic_is_carried_across_follow_ups (test_app.AppLogicTests.test_article_topic_is_carried_across_follow_ups) ... ok
+test_client_ip_rejects_invalid_forwarded_value (test_app.AppLogicTests.test_client_ip_rejects_invalid_forwarded_value) ... ok
+test_connection_reset_returns_clear_inference_error (test_app.AppLogicTests.test_connection_reset_returns_clear_inference_error) ... ok
+test_curated_facts_replace_duplicate_profile_context (test_app.AppLogicTests.test_curated_facts_replace_duplicate_profile_context) ... ok
+test_follow_up_search_uses_previous_user_question (test_app.AppLogicTests.test_follow_up_search_uses_previous_user_question) ... ok
+test_incomplete_stream_returns_clear_inference_error (test_app.AppLogicTests.test_incomplete_stream_returns_clear_inference_error) ... ok
+test_invalid_or_unanswerable_model_output_is_never_exposed (test_app.AppLogicTests.test_invalid_or_unanswerable_model_output_is_never_exposed) ... ok
+test_limiter_enforces_hour_window (test_app.AppLogicTests.test_limiter_enforces_hour_window) ... ok
+test_limiter_enforces_minute_window_and_recovers (test_app.AppLogicTests.test_limiter_enforces_minute_window_and_recovers) ... ok
+test_navigation_label_claims_are_removed (test_app.AppLogicTests.test_navigation_label_claims_are_removed) ... ok
+test_null_completion_returns_clear_inference_error (test_app.AppLogicTests.test_null_completion_returns_clear_inference_error) ... ok
+test_partial_stream_exposes_only_complete_claims (test_app.AppLogicTests.test_partial_stream_exposes_only_complete_claims) ... ok
+test_prompt_injection_is_rejected_before_retrieval (test_app.AppLogicTests.test_prompt_injection_is_rejected_before_retrieval) ... ok
+test_question_shape_controls_detail_and_list_format (test_app.AppLogicTests.test_question_shape_controls_detail_and_list_format) ... ok
+test_side_project_membership_is_resolved_from_curated_facts (test_app.AppLogicTests.test_side_project_membership_is_resolved_from_curated_facts) ... ok
+test_validated_answer_formats_only_cited_sources (test_app.AppLogicTests.test_validated_answer_formats_only_cited_sources) ... ok
+test_abstention_must_have_no_sources (test_evaluate.EvaluationLogicTests.test_abstention_must_have_no_sources) ... ok
+test_eval_suite_has_unique_grounded_turns (test_evaluate.EvaluationLogicTests.test_eval_suite_has_unique_grounded_turns) ... ok
+test_repeated_answer_fails_similarity_gate (test_evaluate.EvaluationLogicTests.test_repeated_answer_fails_similarity_gate) ... ok
+test_supported_turn_checks_source_concepts_length_and_citations (test_evaluate.EvaluationLogicTests.test_supported_turn_checks_source_concepts_length_and_citations) ... ok
+test_bm25_ignores_name_and_question_stopwords (test_rag.RetrievalTests.test_bm25_ignores_name_and_question_stopwords) ... ok
+test_ignores_unsupported_files (test_rag.RetrievalTests.test_ignores_unsupported_files) ... ok
+test_load_and_find_relevant_document (test_rag.RetrievalTests.test_load_and_find_relevant_document) ... ok
+test_markdown_chunks_preserve_metadata_headings_and_size (test_rag.RetrievalTests.test_markdown_chunks_preserve_metadata_headings_and_size) ... ok
+test_reference_details_are_not_indexed (test_rag.RetrievalTests.test_reference_details_are_not_indexed) ... ok
+test_tokenize_normalizes_words (test_rag.RetrievalTests.test_tokenize_normalizes_words) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.010s
+
+OK

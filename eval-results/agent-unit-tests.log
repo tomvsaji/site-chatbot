@@ -1,0 +1,36 @@
+test_disconnect_is_an_error (test_agent.AgentTests.test_disconnect_is_an_error) ... ok
+test_llm_query_executes_tool_and_reaches_model_as_tool_result (test_agent.AgentTests.test_llm_query_executes_tool_and_reaches_model_as_tool_result) ... ok
+test_memory_tool_exposes_exact_first_question_with_chronology (test_agent.AgentTests.test_memory_tool_exposes_exact_first_question_with_chronology) ... ok
+test_search_budget_is_enforced (test_agent.AgentTests.test_search_budget_is_enforced) ... ok
+test_session_turn_limit (test_agent.AgentTests.test_session_turn_limit) ... ok
+test_summary_can_answer_from_history_without_site_search (test_agent.AgentTests.test_summary_can_answer_from_history_without_site_search) ... ok
+test_truncated_generation_is_an_error (test_agent.AgentTests.test_truncated_generation_is_an_error) ... ok
+test_unissued_citations_are_not_saved (test_agent.AgentTests.test_unissued_citations_are_not_saved) ... ok
+test_unknown_tool_and_malformed_arguments_do_not_execute (test_agent.AgentTests.test_unknown_tool_and_malformed_arguments_do_not_execute) ... ok
+test_citation_words_are_normalized_and_removed_from_memory_context (test_agent.ContextTests.test_citation_words_are_normalized_and_removed_from_memory_context) ... ok
+test_exact_budget_drops_old_pair_preserving_current_tool_exchange (test_agent.ContextTests.test_exact_budget_drops_old_pair_preserving_current_tool_exchange) ... ok
+test_chronological_recall_is_session_scoped_and_not_similarity_ranked (test_agent.MemoryTests.test_chronological_recall_is_session_scoped_and_not_similarity_ranked) ... ok
+test_compaction_keeps_originals_and_recent_turns (test_agent.MemoryTests.test_compaction_keeps_originals_and_recent_turns) ... ok
+test_expiry_removes_messages_and_vectors (test_agent.MemoryTests.test_expiry_removes_messages_and_vectors) ... ok
+test_private_archive_and_delete (test_agent.MemoryTests.test_private_archive_and_delete) ... ok
+test_hour_rate_limit_recovers (test_app.AppTests.test_hour_rate_limit_recovers) ... ok
+test_invalid_forwarded_ip_uses_peer (test_app.AppTests.test_invalid_forwarded_ip_uses_peer) ... ok
+test_minute_rate_limit_recovers (test_app.AppTests.test_minute_rate_limit_recovers) ... ok
+test_clear_deletes_only_the_cookie_session_and_rotates_token (test_app.SessionHTTPTests.test_clear_deletes_only_the_cookie_session_and_rotates_token) ... ok
+test_cookie_scopes_memory_and_rejects_invalid_tokens (test_app.SessionHTTPTests.test_cookie_scopes_memory_and_rejects_invalid_tokens) ... ok
+test_untrusted_origin_and_invalid_body_never_reach_agent (test_app.SessionHTTPTests.test_untrusted_origin_and_invalid_body_never_reach_agent) ... ok
+test_abstention_must_have_no_sources (test_evaluate.EvaluationLogicTests.test_abstention_must_have_no_sources) ... ok
+test_eval_suite_has_unique_grounded_turns (test_evaluate.EvaluationLogicTests.test_eval_suite_has_unique_grounded_turns) ... ok
+test_repeated_answer_fails_similarity_gate (test_evaluate.EvaluationLogicTests.test_repeated_answer_fails_similarity_gate) ... ok
+test_supported_turn_checks_source_concepts_length_and_citations (test_evaluate.EvaluationLogicTests.test_supported_turn_checks_source_concepts_length_and_citations) ... ok
+test_bm25_ignores_name_and_question_stopwords (test_rag.RetrievalTests.test_bm25_ignores_name_and_question_stopwords) ... ok
+test_ignores_unsupported_files (test_rag.RetrievalTests.test_ignores_unsupported_files) ... ok
+test_load_and_find_relevant_document (test_rag.RetrievalTests.test_load_and_find_relevant_document) ... ok
+test_markdown_chunks_preserve_metadata_headings_and_size (test_rag.RetrievalTests.test_markdown_chunks_preserve_metadata_headings_and_size) ... ok
+test_reference_details_are_not_indexed (test_rag.RetrievalTests.test_reference_details_are_not_indexed) ... ok
+test_tokenize_normalizes_words (test_rag.RetrievalTests.test_tokenize_normalizes_words) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 1.842s
+
+OK

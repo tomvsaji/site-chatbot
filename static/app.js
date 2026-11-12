@@ -4,7 +4,6 @@ const messages = document.querySelector("#messages");
 const button = form.querySelector("button");
 const clearButton = document.querySelector("#clear-chat");
 const suggestions = document.querySelector("#suggestions");
-const history = [];
 
 function addMessage(text, kind, sources = []) {
   const article = document.createElement("article");
@@ -41,8 +40,6 @@ async function sendQuestion(question) {
 
   suggestions?.remove();
   addMessage(question, "user");
-  const priorHistory = history.slice(-6);
-  history.push({ role: "user", content: question });
   input.value = "";
   input.disabled = true;
   button.disabled = true;
@@ -55,7 +52,7 @@ async function sendQuestion(question) {
     const response = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, history: priorHistory }),
+      body: JSON.stringify({ question }),
     });
     if (!response.ok) {
       const result = await response.json();
@@ -65,6 +62,7 @@ async function sendQuestion(question) {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let streamedText = "";
     const streamedClaims = [];
     let buffer = "";
     let result = null;
@@ -80,8 +78,14 @@ async function sendQuestion(question) {
       if (!dataLines.length) return;
       const data = JSON.parse(dataLines.join("\n"));
       if (event === "status") {
+        streamedText = "";
         pending.classList.add("streaming-status");
         pendingText.textContent = data.message;
+      } else if (event === "delta") {
+        pending.classList.remove("streaming-status");
+        streamedText += data.text;
+        pendingText.textContent = streamedText;
+        messages.scrollTop = messages.scrollHeight;
       } else if (event === "claim") {
         pending.classList.remove("streaming-status");
         if (!streamedClaims.length) pendingText.replaceChildren();
@@ -117,7 +121,6 @@ async function sendQuestion(question) {
 
     pending.remove();
     addMessage(result.answer, "assistant", result.sources);
-    history.push({ role: "assistant", content: result.answer });
   } catch (error) {
     pending.remove();
     addMessage(error.message, "error");
@@ -144,8 +147,14 @@ document.querySelectorAll("[data-question]").forEach((suggestion) => {
   suggestion.addEventListener("click", () => sendQuestion(suggestion.dataset.question));
 });
 
-clearButton.addEventListener("click", () => {
-  history.length = 0;
+clearButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/conversation/reset", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"});
+    if (!response.ok) throw new Error("Could not clear the conversation. Please try again.");
+  } catch (error) {
+    addMessage(error.message, "error");
+    return;
+  }
   messages.replaceChildren();
   addMessage("Conversation cleared. What would you like to know?", "assistant");
   input.focus();

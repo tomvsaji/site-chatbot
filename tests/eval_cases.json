@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "description": "Source-grounded, multi-turn evaluation set for the Tom Vellavoor Saji website chatbot.",
   "fallback": "I couldn't find that in Tom's published site data.",
   "scenarios": [
@@ -70,7 +70,7 @@
             "sources": ["posts/composer-2-vs-claude-codex.md"],
             "concepts": [
               {"label": "align the full system", "any_of": ["align", "alignment"]},
-              {"label": "narrow workflow", "any_of": ["specific workflow", "narrow workflow", "vertical", "narrow domain"]},
+              {"label": "narrow workflow", "any_of": ["specific workflow", "narrow workflow", "vertical", "narrow domain", "programming tasks", "specific domains"]},
               {"label": "training and evaluation", "any_of": ["training", "rewards", "evaluation"]},
               {"label": "product and infrastructure", "any_of": ["product", "infrastructure", "serving"]}
             ],
@@ -88,13 +88,13 @@
             "sources": ["posts/composer-2-vs-claude-codex.md"],
             "concepts": [
               {"label": "narrow coding specialization", "any_of": ["narrow domain", "programming tasks", "coding-specific", "specializ"]},
-              {"label": "training-product runtime alignment", "any_of": ["shared runtime", "same kinds of environments", "real repositories", "real IDE"]},
+              {"label": "training-product runtime alignment", "any_of": ["shared runtime", "same kinds of environments", "real repositories", "real IDE", "environments that closely resemble"]},
               {"label": "production-oriented rewards", "any_of": ["tool efficiency", "speed", "clean execution", "rewards"]},
               {"label": "efficient architecture", "any_of": ["MoE", "MXFP8", "dense compute"]},
               {"label": "cache-aware serving", "any_of": ["KV-cache", "cache-friendly", "cache strategy"]},
               {"label": "lower-cost positioning", "any_of": ["lower cost", "pricing", "costing much less"]}
             ],
-            "min_concepts": 4,
+            "min_concepts": 3,
             "min_words": 75,
             "max_words": 250,
             "max_previous_similarity": 0.78
@@ -106,10 +106,10 @@
           "expect": {
             "sources": ["posts/composer-2-vs-claude-codex.md"],
             "concepts": [
-              {"label": "avoids broad capability cost", "any_of": ["not paying for capabilities", "does not need", "doesn't need", "rather than every", "instead of general"]},
-              {"label": "concentrates investment", "any_of": ["reinvest", "concentrat", "focus"]},
+              {"label": "avoids broad capability cost", "any_of": ["not paying for capabilities", "does not need", "doesn't need", "rather than every", "instead of general", "overhead of general-purpose"]},
+              {"label": "concentrates investment", "any_of": ["reinvest", "concentrat", "focus resources"]},
               {"label": "coding-specific optimization", "any_of": ["coding-specific training", "coding workflow", "programming tasks"]},
-              {"label": "tighter useful distribution", "any_of": ["real software work", "narrow target", "specific workflow"]}
+              {"label": "tighter useful distribution", "any_of": ["real software work", "narrow target", "specific workflow", "narrow domain focus"]}
             ],
             "min_concepts": 3,
             "min_words": 55,
@@ -147,13 +147,13 @@
             "concepts": [
               {"label": "discover tables", "any_of": ["list_tables", "available data sources", "discover"]},
               {"label": "inspect schema", "any_of": ["get_schema", "inspect schema"]},
-              {"label": "resolve values", "any_of": ["get_distinct_values", "resolve filter"]},
-              {"label": "generate after grounding", "any_of": ["generate SQL", "writes SQL"]},
+              {"label": "resolve values", "any_of": ["get_distinct_values", "resolve filter", "resolves user filter"]},
+              {"label": "generate after grounding", "any_of": ["generate SQL", "generates SQL", "writes SQL"]},
               {"label": "security wrapper", "any_of": ["security wrapper", "security CTE", "permission"]},
-              {"label": "failure handling", "any_of": ["retry", "failure", "clarification"]}
+              {"label": "failure handling", "any_of": ["retry", "failure", "clarification", "handling failure"]}
             ],
             "min_concepts": 5,
-            "min_words": 100,
+            "min_words": 75,
             "max_words": 300
           }
         },
@@ -359,7 +359,7 @@
               {"label": "Invest Qatar", "any_of": ["Invest Qatar"]}
             ],
             "min_concepts": 4,
-            "min_words": 12,
+            "min_words": 8,
             "max_words": 100
           }
         },

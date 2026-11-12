@@ -69,8 +69,8 @@ Run the core suite:
 ```bash
 docker compose exec \
   -e EVAL_TAGS=core \
-  -e EVAL_MODEL_LABEL=granite-4.0-1b-q8 \
-  -e EVAL_OUTPUT_PATH=/tmp/granite-1b.json \
+  -e EVAL_MODEL_LABEL=lfm3-1.7b-q4_k_m \
+  -e EVAL_OUTPUT_PATH=/tmp/lfm3.json \
   app python evaluate.py
 ```
 

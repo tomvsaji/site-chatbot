@@ -1,0 +1,6 @@
+event: status
+data: {"message": "Preparing your conversation…"}
+
+event: error
+data: {"error": "The local language model is warming up or unavailable. Please try again."}
+

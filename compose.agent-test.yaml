@@ -1,0 +1,32 @@
+services:
+  agent-test:
+    build: .
+    environment:
+      DATA_DIR: /app/data
+      LLM_BASE_URL: http://site-chatbot-agent-llm:8080/v1
+      LLM_MODEL: LiquidAI/LFM3-1.7B
+      LLM_CONTEXT_SIZE: "8192"
+      QDRANT_URL: http://site-chatbot-qdrant-1:6333
+      QDRANT_COLLECTION: site_chunks_agent_test
+      EMBEDDING_CACHE_DIR: /app/.cache/fastembed
+      STATE_DIR: /app/state
+      REQUESTS_PER_MINUTE: "60"
+      REQUESTS_PER_HOUR: "200"
+      AGENT_TRACE: "1"
+    volumes:
+      - ./data:/app/data:ro
+      - agent-test-state:/app/state
+      - site-chatbot_embedding-cache:/app/.cache/fastembed
+    ports:
+      - 127.0.0.1:8083:8080
+    mem_limit: 768m
+    networks:
+      - production
+networks:
+  production:
+    external: true
+    name: site-chatbot_default
+volumes:
+  agent-test-state:
+  site-chatbot_embedding-cache:
+    external: true

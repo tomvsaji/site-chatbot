@@ -55,6 +55,7 @@ activate_sha() {
   local host="$2"
 
   git checkout --detach --force "${sha}" || return 1
+  bash ops/download-model || return 1
   docker compose -p "${COMPOSE_PROJECT}" config -q || return 1
   docker compose -p "${COMPOSE_PROJECT}" up -d --build --remove-orphans || return 1
   wait_for_health "${host}" || return 1

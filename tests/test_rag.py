@@ -43,7 +43,7 @@ class RetrievalTests(unittest.TestCase):
             )
             chunks = load_chunks(root)
             self.assertGreater(len(chunks), 1)
-            self.assertTrue(all(len(chunk.tokens) <= 140 for chunk in chunks))
+            self.assertTrue(all(len(chunk.tokens) <= 100 for chunk in chunks))
             self.assertTrue(all(chunk.title == "Useful Article" for chunk in chunks))
             self.assertTrue(
                 all(chunk.heading == "Important Section" for chunk in chunks)
@@ -52,6 +52,20 @@ class RetrievalTests(unittest.TestCase):
                 all(chunk.url == "https://example.com/article" for chunk in chunks)
             )
             self.assertFalse(any("© 2026" in chunk.text for chunk in chunks))
+
+    def test_reference_details_are_not_indexed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "article.md").write_text(
+                "# Article\n\nUseful article content.\n\n"
+                ":::details References\n"
+                "- [Unrelated external title](https://example.com)\n"
+                ":::\n",
+                encoding="utf-8",
+            )
+            text = " ".join(chunk.text for chunk in load_chunks(root))
+            self.assertIn("Useful article content", text)
+            self.assertNotIn("Unrelated external title", text)
 
     def test_bm25_ignores_name_and_question_stopwords(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -57,7 +57,7 @@ class HybridIndex:
         raise RuntimeError(f"Qdrant is unavailable at {QDRANT_URL}") from last_error
 
     def _rebuild_vector_index(self) -> None:
-        vectors = list(self.embedder.embed([chunk.text for chunk in self.chunks]))
+        vectors = list(self.embedder.embed([chunk.text for chunk in self.chunks], batch_size=16))
         vector_size = len(vectors[0]) if vectors else 384
 
         if self.client.collection_exists(QDRANT_COLLECTION):
@@ -95,12 +95,26 @@ class HybridIndex:
             wait=True,
         )
 
-    def _semantic_search(self, query: str, limit: int) -> list[tuple[Chunk, float]]:
+    def _semantic_search(
+        self, query: str, limit: int, source: str | None = None
+    ) -> list[tuple[Chunk, float]]:
         query_vector = next(self.embedder.query_embed(query)).tolist()
         result = self.client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector,
             limit=limit,
+            query_filter=(
+                models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="source",
+                            match=models.MatchValue(value=source),
+                        )
+                    ]
+                )
+                if source
+                else None
+            ),
             with_payload=True,
         )
         matches: list[tuple[Chunk, float]] = []
@@ -124,11 +138,18 @@ class HybridIndex:
                 )
         return matches
 
-    def search(self, query: str, limit: int = 5) -> list[RetrievalMatch]:
+    def search(
+        self, query: str, limit: int = 5, source: str | None = None
+    ) -> list[RetrievalMatch]:
         """Fuse semantic and lexical ranks using reciprocal-rank fusion."""
         candidate_limit = max(limit * 3, 10)
-        semantic = self._semantic_search(query, candidate_limit)
-        lexical = self.bm25.search(query, candidate_limit)
+        semantic = self._semantic_search(query, candidate_limit, source=source)
+        lexical_index = (
+            BM25Index([chunk for chunk in self.chunks if chunk.source == source])
+            if source
+            else self.bm25
+        )
+        lexical = lexical_index.search(query, candidate_limit)
 
         chunks: dict[tuple[str, str], Chunk] = {}
         fused_scores: defaultdict[tuple[str, str], float] = defaultdict(float)
@@ -147,7 +168,7 @@ class HybridIndex:
         ranked = sorted(
             fused_scores.items(),
             key=lambda item: (
-                item[1] + (0.0004 if item[0][0] == "tom-facts.md" else 0.0),
+                item[1],
                 semantic_scores[item[0]],
             ),
             reverse=True,
@@ -156,7 +177,9 @@ class HybridIndex:
         source_counts: defaultdict[str, int] = defaultdict(int)
         for key, score in ranked:
             chunk = chunks[key]
-            if source_counts[chunk.source] >= 2:
+            if source and chunk.source != source:
+                continue
+            if not source and source_counts[chunk.source] >= 4:
                 continue
             source_counts[chunk.source] += 1
             matches.append(
@@ -170,6 +193,47 @@ class HybridIndex:
             if len(matches) >= limit:
                 break
         return matches
+
+    def chunks_for_source(
+        self, source: str, limit: int = 4
+    ) -> list[RetrievalMatch]:
+        """Return deterministic source chunks for explicit catalog requests."""
+        return [
+            RetrievalMatch(
+                chunk=chunk,
+                score=1.0,
+                semantic_score=1.0,
+                lexical_score=1.0,
+            )
+            for chunk in self.chunks
+            if chunk.source == source
+        ][:limit]
+
+    def chunks_for_sections(
+        self, source: str, section_markers: list[str]
+    ) -> list[RetrievalMatch]:
+        """Return one representative chunk for each requested document section."""
+        selected: list[RetrievalMatch] = []
+        for marker in section_markers:
+            chunk = next(
+                (
+                    candidate
+                    for candidate in self.chunks
+                    if candidate.source == source
+                    and marker.lower() in candidate.heading.lower()
+                ),
+                None,
+            )
+            if chunk is not None:
+                selected.append(
+                    RetrievalMatch(
+                        chunk=chunk,
+                        score=1.0,
+                        semantic_score=1.0,
+                        lexical_score=1.0,
+                    )
+                )
+        return selected
 
     @staticmethod
     def is_relevant(matches: list[RetrievalMatch]) -> bool:

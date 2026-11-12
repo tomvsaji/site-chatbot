@@ -1,0 +1,99 @@
+{
+  "hardware": {
+    "cpu_cores": 2,
+    "host_memory_gib": 7.8,
+    "swap_gib": 0,
+    "llm_container_limit_gib": 4,
+    "context_tokens": 4096
+  },
+  "calibrated_suite_version": 3,
+  "full_core_results": [
+    {
+      "model": "Granite 4.0 1B Q8_0",
+      "artifact_size_gb": 1.74,
+      "passes": 10,
+      "turns": 23,
+      "pass_rate": 0.43,
+      "median_seconds": 13.2,
+      "p95_seconds": 29.8,
+      "resident_memory_gib": 2.0
+    },
+    {
+      "model": "Granite 4.0 Micro 3B Q4_K_M",
+      "artifact_size_gb": 2.1,
+      "passes": 9,
+      "turns": 23,
+      "pass_rate": 0.39,
+      "median_seconds": 27.3,
+      "p95_seconds": 52.3,
+      "resident_memory_gib": 3.48
+    },
+    {
+      "model": "Qwen3 4B Q4_K_M, original RAG",
+      "artifact_size_gb": 2.5,
+      "passes": 14,
+      "turns": 23,
+      "pass_rate": 0.61,
+      "median_seconds": 30.5,
+      "p95_seconds": 59.7,
+      "resident_memory_gib": 2.97
+    },
+    {
+      "model": "Phi-4 Mini Instruct Q4_K_M",
+      "artifact_size_gb": 2.5,
+      "passes": 8,
+      "turns": 23,
+      "pass_rate": 0.35,
+      "median_seconds": 42.1,
+      "p95_seconds": 118.8,
+      "resident_memory_gib": 3.8
+    },
+    {
+      "model": "Qwen3 4B Q4_K_M, corrected RAG",
+      "artifact_size_gb": 2.5,
+      "passes": 23,
+      "turns": 23,
+      "pass_rate": 1.0,
+      "median_seconds": 32.1,
+      "p95_seconds": 81.9,
+      "resident_memory_gib": 2.97
+    }
+  ],
+  "screened_models": [
+    {
+      "model": "Llama 3.2 3B Instruct Q4_K_M",
+      "artifact_size_gb": 2.02,
+      "passes": 4,
+      "turns": 9,
+      "median_seconds": 31.0,
+      "p95_seconds": 38.8,
+      "resident_memory_gib": 2.02
+    },
+    {
+      "model": "SmolLM3 3B Q4_K_M",
+      "artifact_size_gb": 1.92,
+      "passes": 0,
+      "turns": 2,
+      "latencies_seconds": [26.2, 29.3],
+      "resident_memory_gib": 3.43,
+      "elimination_reason": "Failed both catalog gates."
+    },
+    {
+      "model": "Qwen3.5 4B IQ4_XS",
+      "artifact_size_gb": 2.51,
+      "passes": 1,
+      "turns": 2,
+      "latencies_seconds": [84.4, 163.6],
+      "elimination_reason": "Unacceptable CPU latency and failed the post-list gate."
+    },
+    {
+      "model": "Gemma 3 4B IT Q4_K_M",
+      "artifact_size_gb": 2.49,
+      "passes": 1,
+      "turns": 2,
+      "latencies_seconds": [32.1, 146.2],
+      "resident_memory_gib": 3.34,
+      "elimination_reason": "Unacceptable tail latency and failed the post-list gate."
+    }
+  ]
+}

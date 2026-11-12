@@ -5,7 +5,13 @@ services:
     environment:
       DATA_DIR: /app/data
       LLM_BASE_URL: http://llm:8080/v1
-      LLM_MODEL: ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      LLM_MODEL: LiquidAI/LFM3-1.7B
+      LLM_CONTEXT_SIZE: "8192"
+      STATE_DIR: /app/state
+      MAX_AGENT_SEARCHES: ${MAX_AGENT_SEARCHES:-3}
+      RECENT_HISTORY_MESSAGES: ${RECENT_HISTORY_MESSAGES:-4}
+      MAX_SESSION_TURNS: ${MAX_SESSION_TURNS:-40}
+      MEMORY_TTL_DAYS: ${MEMORY_TTL_DAYS:-7}
       QDRANT_URL: http://qdrant-dev:6333
       QDRANT_COLLECTION: site_chunks_dev
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
@@ -14,6 +20,19 @@ services:
       REQUESTS_PER_HOUR: ${REQUESTS_PER_HOUR:-200}
       MAX_MODEL_REQUESTS: "1"
       MAX_QUESTION_CHARS: ${MAX_QUESTION_CHARS:-800}
+      TRUSTED_PROXY_CIDRS: ""
+      TURNSTILE_REQUIRED: "false"
+      TURNSTILE_SECRET_KEY: ""
+      MAX_RATE_LIMIT_CLIENTS: "${MAX_RATE_LIMIT_CLIENTS:-4096}"
+      GLOBAL_REQUESTS_PER_MINUTE: "${GLOBAL_REQUESTS_PER_MINUTE:-10}"
+      GLOBAL_REQUESTS_PER_HOUR: "${GLOBAL_REQUESTS_PER_HOUR:-100}"
+      MAX_BODY_BYTES: "${MAX_BODY_BYTES:-10000}"
+      MAX_HTTP_CONNECTIONS: "${MAX_HTTP_CONNECTIONS:-32}"
+      REQUEST_READ_TIMEOUT: "${REQUEST_READ_TIMEOUT:-15}"
+      RESPONSE_WRITE_TIMEOUT: "${RESPONSE_WRITE_TIMEOUT:-15}"
+      TURNSTILE_EXPECTED_HOSTNAMES: "${TURNSTILE_EXPECTED_HOSTNAMES:-tomvsaji.com,www.tomvsaji.com}"
+      TURNSTILE_EXPECTED_ACTION: "${TURNSTILE_EXPECTED_ACTION:-site_chat}"
+      TURNSTILE_TIMEOUT: "${TURNSTILE_TIMEOUT:-5}"
       MIN_SEMANTIC_SCORE: ${MIN_SEMANTIC_SCORE:-0.22}
       MIN_LEXICAL_SCORE: ${MIN_LEXICAL_SCORE:-2.0}
       ALLOWED_ORIGINS: http://127.0.0.1:8081,http://localhost:8081
@@ -22,6 +41,7 @@ services:
       - 127.0.0.1:8081:8080
     volumes:
       - ./data:/app/data:ro
+      - conversation-dev-data:/app/state
       - embedding-dev-cache:/app/.cache/fastembed
     mem_limit: 768m
     depends_on:
@@ -47,5 +67,6 @@ networks:
     name: site-chatbot_default
 
 volumes:
+  conversation-dev-data:
   embedding-dev-cache:
   qdrant-dev-data:

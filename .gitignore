@@ -21,3 +21,10 @@ venv/
 
 compose.override.yaml
 compose.local.yaml
+
+models/
+
+.state/
+
+# Local security test transcripts
+test-logs/
