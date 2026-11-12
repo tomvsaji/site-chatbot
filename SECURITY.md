@@ -1,43 +1,43 @@
-# Native widget API security and release checklist
+# Chatbot API security
 
-This is a local, undeployed hardening change. Review and release separately.
-The API is public; CORS and Origin checks are **not authentication**. Scripts can
-omit or forge Origin. No API secret belongs in the portfolio browser bundle.
-ChatGPT/Codex authentication and billing are unrelated and unchanged.
+The hardened HTTP boundary wraps the native LFM3 agent and private session memory.
+The API is public; CORS/Origin checks are not authentication. No browser API key
+or Turnstile secret belongs in the frontend.
 
-## API contract
+## Current API contract
 
-The native Next.js widget on `https://tomvsaji.com` calls
-`https://chat.srv1619516.hstgr.cloud/api/chat/stream` with POST and
-`Content-Type: application/json` (UTF-8):
+POST `/api/chat` or `/api/chat/stream` with `application/json; charset=utf-8`:
 
 ```json
-{"question":"What has Tom built?","history":[],"turnstile_token":"optional-token"}
+{"question":"What has Tom built?","turnstile_token":"optional-when-enabled"}
 ```
 
-Omit `turnstile_token` when challenges are disabled. Question must be a string,
-trimmed length 1–800 by default. Body must be a JSON object; no scalar, array,
-NaN, invalid UTF-8, or coerced question values. History must be a list of objects
-with role `user`/`assistant` and string content. As before, only the last eight
-messages, each truncated to 800 characters, reach retrieval. The entire encoded
-request, including history and token, must fit `MAX_BODY_BYTES` (10,000 default).
-Existing sources, retrieval, LFM3 prompts, generation, and same-model retry are
-preserved. The JSON `/api/chat` endpoint has the same protections.
+Requests must be strict UTF-8 JSON objects, with string questions of 1–800
+characters and a maximum 10,000-byte body. Legacy `history` envelopes are
+validated if supplied but never override server-side memory. A Secure,
+HttpOnly, SameSite=Strict cookie scopes private memory. POST
+`/api/conversation/reset` with `{}` deletes that session and rotates the cookie;
+reset receives the same origin, framing, quota and challenge checks as chat.
 
-SSE still emits `status`, validated `claim`, `final` with existing sources, and
-`done`; generation errors emit a generic `error`. Before SSE starts, failures
-are JSON: 400 invalid input/framing, 403 origin/challenge rejection, 413 body
-size, 415 media type, 417 Expect, 429 quota, 431 headers, or 503 capacity/service
-failure. HTTP 429/503 have integer-seconds `Retry-After`; errors after HTTP 200
-must be handled as SSE errors. Obtain a fresh challenge token for each retry.
-Never display raw provider errors. All responses close their connection; SSE
-runs until completion, error, or disconnect. There is no iframe requirement.
+SSE emits `status`, provisional text `delta`, `final` with sources, `done`, or
+`error`. The server validates final citation IDs; this does not prove semantic
+entailment. Model-authored runtime errors are not forwarded. Explicit safe
+application errors (session/context limits, unavailable inference) are preserved;
+all other exceptions become a generic service error. HTTP 429/503 include
+Retry-After, exposed only to approved browser origins.
 
-Origins are exact entries in `ALLOWED_ORIGINS`, currently the chat hostname,
-`https://tomvsaji.com`, and `https://www.tomvsaji.com`. There are no wildcards or
-Netlify preview origins. OPTIONS permits POST and Content-Type. Missing Origin
-is still allowed for existing non-browser clients. Duplicate Origin headers
-are rejected. Origin does not change quota identity.
+**Native website integration:** the standalone UI on the chat hostname uses
+same-origin cookies. A separate frontend on tomvsaji.com needs a same-origin
+server proxy (or a separately reviewed session design) for persistent memory.
+Direct cross-site fetch does not gain memory merely from CORS permission:
+SameSite=Strict cookies and the absence of credentialed CORS are intentional.
+Do not loosen them to work around frontend integration. Old claim-only parsers
+must accept delta events (or wait for final).
+
+Turnstile remains off by default. Enabling it requires real keys and a matching
+frontend token flow, including reset. No live challenge verification is claimed.
+The preserved IMPLEMENTATION_REPORT.md documents the earlier security-only
+branch, not the final agent API. See INTEGRATION_REPORT.md for consolidated checks.
 
 ## Proxy trust: configure both boundaries
 
@@ -64,8 +64,7 @@ upstream's maintained egress ranges** and firewall bypasses; do not add those
 ranges to the app unless they actually connect directly to it. Also keep
 `proxyProtocol.insecure: false`; do not enable PROXY protocol unless needed
 and restricted to verified senders. These are Traefik **static entrypoint**
-settings, not app Compose labels. No Traefik configuration was changed or
-inspected on the live server in this task.
+settings, not app Compose labels. The integration review inspected Traefik 3.6.14 and confirmed these actual defaults; no Traefik configuration was changed.
 
 The app considers only X-Forwarded-For from a trusted immediate socket peer.
 It validates the entire chain (max 32 IP literals), walks right-to-left through

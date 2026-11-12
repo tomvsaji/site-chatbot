@@ -1,3 +1,6 @@
+> Historical report for the security-only branch. Its old history/claim contract
+> is superseded by SECURITY.md and INTEGRATION_REPORT.md.
+
 # Native widget security implementation report
 
 Date: 2026-11-10 (UTC)
