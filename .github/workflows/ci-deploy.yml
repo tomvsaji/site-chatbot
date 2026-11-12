@@ -41,8 +41,20 @@ jobs:
       - name: Validate development Compose configuration
         run: docker compose -f compose.dev.yaml -p site-chatbot-dev config -q
 
-      - name: Build application image
-        run: docker build --tag site-chatbot:ci .
+      - name: Build with restrictive source permissions
+        run: |
+          chmod -R g+rwX,o-rwx app.py agent.py memory.py rag.py vector_store.py sync_site.py evaluate.py requirements.txt static data tests/eval_cases.json
+          docker build --tag site-chatbot:ci .
+
+      - name: Verify non-root source readability
+        run: |
+          docker run --rm --entrypoint python site-chatbot:ci -c '
+          import os, pathlib, app, agent, memory
+          assert os.getuid() == 10001
+          files = [pathlib.Path("/app/app.py"), *pathlib.Path("/app/static").rglob("*"), *pathlib.Path("/app/data").rglob("*")]
+          [p.read_bytes() for p in files if p.is_file()]
+          print("Non-root source readability passed")'
+
 
   publish-image:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
