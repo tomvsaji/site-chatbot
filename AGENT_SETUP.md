@@ -90,14 +90,15 @@ Compose fixes `LLM_CONTEXT_SIZE=8192` to match runtime `--ctx-size 8192`.
 bounded pre-loop summary generation and storage work); errors are explicit.
 The inference memory cap remains 2500 MiB, app 768 MiB and Qdrant 512 MiB.
 
-SSE emits `status`, text `delta`, `final`, `done` or `error`. Native tool calls
-and reasoning are never forwarded as text. Citation numbers are issued from
+SSE emits `status`, validated answer `delta`, `final`, `done` or `error`.
+The upstream model stream is buffered until reasoning and citations can be
+checked; progress continues to stream. Native tool calls and reasoning are never
+forwarded as answer text. Citation numbers are issued from
 retrieved passages per answer and verified before saving the final answer.
 Historical citation markers are removed from assistant context; an invalid
 citation gets one model-driven correction opportunity within the same search
 and time budget.
-This checks citation existence, not semantic entailment. Streamed text remains
-provisional until `final`; an invalid citation becomes a visible error.
+This checks citation existence, not semantic entailment. An invalid citation gets a bounded correction attempt or a visible error.
 
 Tests: `python3 -m unittest discover -s tests -v`, `node --check static/app.js`,
 and Compose configuration validation. The former keyword-route unit tests
@@ -108,7 +109,5 @@ Changing the embedding model requires rebuilding archived memory embeddings or
 clearing conversation memory; changing vector dimensions produces a clear error.
 The current embedding model remains MiniLM.
 
-Deployment source is currently local. These changes have not been committed or
-pushed to GitHub; deploying the unchanged upstream main would restore the old
-pipeline. Review and publish the source changes before using the existing
-automated main-branch deployment hook.
+Source is preserved and consolidated in PR #3. The main branch is the release
+source; see INTEGRATION_REPORT.md for branch history and validation.

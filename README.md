@@ -1,7 +1,7 @@
-> Current architecture (2026-11-10): native LLM search tools, 8192-token context,
-> and private compressed/searchable conversation memory are documented in
-> [AGENT_SETUP.md](AGENT_SETUP.md). The older pipeline and benchmark discussion
-> below is historical and does not describe the current request routing.
+> Current release documentation: [INTEGRATION_REPORT.md](INTEGRATION_REPORT.md),
+> [CHATBOT_LOGIC.md](CHATBOT_LOGIC.md), [AGENT_SETUP.md](AGENT_SETUP.md), and
+> [SECURITY.md](SECURITY.md). The older model-comparison narrative below is
+> retained as historical evidence, not a description of the current request path.
 
 # Site Chatbot
 

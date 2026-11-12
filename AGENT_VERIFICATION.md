@@ -1,3 +1,6 @@
+> Historical agent-only verification from 2026-11-10. Current security and
+> output-buffering behavior is documented in INTEGRATION_REPORT.md.
+
 # Agent/memory verification — 2026-11-10
 
 This replaces the fixed keyword/topic RAG pipeline; it does not change the chat

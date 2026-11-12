@@ -41,7 +41,7 @@ Turnstile remains disabled; no keys, credentials or authentication were changed.
 4. Execute only those allowed read-only tools, append native tool results, and
    let the model continue. Search count, elapsed time, actual prompt tokens and
    output length are bounded. No topic or article is selected by keyword routes.
-5. Stream provisional text; validate final citation IDs, attach published source
+5. Stream progress while buffering model text; remove reasoning prefixes, validate final citation IDs, attach published source
    links, and save completed exchanges. Compact old turns as needed; Clear
    deletes the private session. Defaults remain 40 questions and 7-day inactivity
    expiry. Summaries/earlier assistant claims are not independent site evidence.
@@ -61,3 +61,24 @@ Further combined-image and real-model results will be appended before release.
 The original unrelated SECURITY_HARDENING_TODO.md and rollback backups are
 preserved outside the integration commit. No branch is deleted before its
 unique commits are reachable from the published consolidation.
+
+
+Final pre-release validation: **66 unit/HTTP tests pass**, including new checks
+that accidental reasoning never reaches client events or memory. Real-model
+smoke on the corrected built image returned cited chat in 36.182 seconds and a
+same-session summary in 19.397 seconds; no reasoning tag or prefix appeared in
+the final summary. Clear returned 200 and rotated the cookie. Malformed input
+and foreign origins were rejected. Stopping only the isolated inference service
+returned a clear SSE error while production remained available. These are
+functional checks, not a new answer-quality benchmark; the actual answer still
+mischaracterized Invest Qatar as a news agency, so semantic grounding remains
+imperfect. Actual test output is preserved under eval-results/integration-*.
+
+The previous dirty production tree was backed up at
+`/home/codex/site-chatbot-prod-backup-20261112`. Its runtime source was verified
+byte-for-byte against d9ba7e7 and made clean at that preserved commit, without
+rebuilding or changing the running service. The server-only environment now
+prepares `TRUSTED_PROXY_CIDRS=172.16.3.1/32`; no secrets or challenge keys changed.
+This gives automated deployment a valid native-agent rollback commit instead
+of the old Granite baseline. Final main-branch CI/release status is available
+on PR #3 and GitHub Actions.
