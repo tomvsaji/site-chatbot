@@ -42,10 +42,11 @@ class SessionHTTPTests(unittest.TestCase):
         self.patches = [patch('app.get_index',return_value=object()),
                         patch('app.agent.run_agent',side_effect=fake_run),
                         patch('app.RATE_LIMITER', app.SlidingWindowLimiter(100,100)),
+                        patch('app.GLOBAL_LIMITER', app.SlidingWindowLimiter(100,100)),
                         patch('app.Handler.log_message')]
         for p in self.patches:
             p.start(); self.addCleanup(p.stop)
-        self.server = ThreadingHTTPServer(('127.0.0.1',0),app.Handler)
+        self.server = app.BoundedHTTPServer(('127.0.0.1',0),app.Handler)
         self.thread=threading.Thread(target=self.server.serve_forever,daemon=True)
         self.thread.start()
         self.addCleanup(self.server.server_close)

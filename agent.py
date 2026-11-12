@@ -14,6 +14,11 @@ from pathlib import Path
 
 from memory import ConversationMemory
 
+
+class AgentError(RuntimeError):
+    """Explicitly safe, application-authored error text suitable for clients."""
+
+
 MODEL = os.getenv('LLM_MODEL', 'LiquidAI/LFM3-1.7B')
 BASE = os.getenv('LLM_BASE_URL', 'http://llm:8080/v1').rstrip('/')
 CONTEXT = int(os.getenv('LLM_CONTEXT_SIZE', '8192'))
@@ -78,7 +83,7 @@ def post(path, payload, timeout=180):
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.load(response)
     except (OSError, http.client.HTTPException, ValueError) as error:
-        raise RuntimeError('The local language model is warming up or unavailable. Please try again.') from error
+        raise AgentError('The local language model is warming up or unavailable. Please try again.') from error
 
 
 def payload(messages, *, tools=True, max_tokens=640):
@@ -106,7 +111,7 @@ def compact_session(snapshot, session, emit):
         if not isinstance(summary, str) or not summary.strip():
             raise ValueError()
     except (KeyError, IndexError, TypeError, ValueError) as error:
-        raise RuntimeError('Conversation memory could not be updated. Please try again.') from error
+        raise AgentError('Conversation memory could not be updated. Please try again.') from error
     # Even a truncated summary is just a hint; archived originals are preserved.
     summary = summary[:1200]
     store().summarize(session, summary, older[-1]['id'])
@@ -119,17 +124,17 @@ def fit_context(messages, *, tools=True):
         probe = payload([{k:v for k,v in m.items() if not k.startswith('_')} for m in messages], tools=tools)
         rendered = post('/apply-template', probe, timeout=15)
         if not isinstance(rendered.get('prompt'), str):
-            raise RuntimeError('The inference runtime could not measure conversation context.')
+            raise AgentError('The inference runtime could not measure conversation context.')
         counted = post('/tokenize', {'content': rendered['prompt'], 'add_special': False}, timeout=15)
         tokens = counted.get('tokens')
         if not isinstance(tokens, list):
-            raise RuntimeError('The inference runtime could not measure conversation context.')
+            raise AgentError('The inference runtime could not measure conversation context.')
         if len(tokens) <= CONTEXT - 960:
             return
         # Never split a tool-call/result pair. Only pre-current-question old turns can be removed.
         boundary = next((i for i,m in enumerate(messages) if m.get('_current')), 1)
         if boundary <= 1:
-            raise RuntimeError('This conversation exceeded its context budget. Start a new conversation.')
+            raise AgentError('This conversation exceeded its context budget. Start a new conversation.')
         end = 2
         while end < boundary and messages[end]['role'] != 'user':
             end += 1
@@ -153,17 +158,17 @@ def stream_completion(request_payload, timeout=180):
                     choice = json.loads(data)['choices'][0]
                     yield choice
                 except (ValueError, KeyError, IndexError, TypeError) as error:
-                    raise RuntimeError('The inference service returned an invalid stream.') from error
+                    raise AgentError('The inference service returned an invalid stream.') from error
         if not done:
-            raise RuntimeError('The response stream ended unexpectedly. Please try again.')
+            raise AgentError('The response stream ended unexpectedly. Please try again.')
     except (OSError, http.client.HTTPException) as error:
-        raise RuntimeError('The local language model is warming up or unavailable. Please try again.') from error
+        raise AgentError('The local language model is warming up or unavailable. Please try again.') from error
 
 
 def _run_agent(question, session, index, emit=lambda *_: None):
     snapshot = store().snapshot(session)
     if sum(m['role'] == 'user' for m in snapshot['messages']) >= MAX_TURNS:
-        raise RuntimeError(f'This conversation reached its {MAX_TURNS}-message limit. Start a new conversation to continue.')
+        raise AgentError(f'This conversation reached its {MAX_TURNS}-message limit. Start a new conversation to continue.')
     summary, recent = compact_session(snapshot, session, emit)
     active_tools = TOOLS if len(snapshot['messages']) > RECENT_MESSAGES else TOOLS[:1]
     system = SYSTEM.replace('SEARCH_LIMIT', str(MAX_SEARCHES))
@@ -184,7 +189,7 @@ def _run_agent(question, session, index, emit=lambda *_: None):
     started = time.monotonic()
     for round_number in range(MAX_SEARCHES + 2):
         if time.monotonic() - started > 240:
-            raise RuntimeError('The assistant reached its time limit. Please ask a more specific question.')
+            raise AgentError('The assistant reached its time limit. Please ask a more specific question.')
         fit_context(messages, tools=active_tools)
         wire_messages = [{k:v for k,v in m.items() if not k.startswith('_')} for m in messages]
         request = payload(wire_messages, tools=active_tools)
@@ -213,10 +218,10 @@ def _run_agent(question, session, index, emit=lambda *_: None):
                 if not calls:
                     emit('delta', {'text': text})
         if finish == 'length':
-            raise RuntimeError('The assistant exceeded its response limit. Please ask a shorter or more specific question.')
+            raise AgentError('The assistant exceeded its response limit. Please ask a shorter or more specific question.')
         if calls:
             if searches >= MAX_SEARCHES:
-                raise RuntimeError('The assistant exceeded its search budget. Please try a more specific question.')
+                raise AgentError('The assistant exceeded its search budget. Please try a more specific question.')
             assistant = {'role': 'assistant', 'content': content or None, 'tool_calls': list(calls.values())}
             if reasoning:
                 assistant['reasoning_content'] = reasoning
@@ -231,11 +236,11 @@ def _run_agent(question, session, index, emit=lambda *_: None):
             continue
         answer = normalize_citations(content.strip())
         if not answer or '<tool_call>' in answer or '<think>' in answer:
-            raise RuntimeError('The assistant returned an invalid response. Please try again.')
+            raise AgentError('The assistant returned an invalid response. Please try again.')
         cited = list(dict.fromkeys(int(n) for n in re.findall(r'\[(\d+)\]', answer)))
         if any(n not in sources for n in cited):
             if citation_repaired:
-                raise RuntimeError('The assistant returned an unsupported citation. Please try again.')
+                raise AgentError('The assistant returned an unsupported citation. Please try again.')
             citation_repaired = True
             messages.append({'role': 'assistant', 'content': answer})
             messages.append({'role': 'user', 'content': 'The previous reply cited unavailable sources. Search the site to obtain evidence and current citation numbers before answering factual questions. For a summary of our conversation, omit website citation numbers. Correct the reply to my original question without mentioning this check.'})
@@ -243,7 +248,7 @@ def _run_agent(question, session, index, emit=lambda *_: None):
         result = {'answer': answer, 'sources': [sources[n] for n in cited]}
         store().append(session, [{'role': 'user', 'content': question}, {'role': 'assistant', 'content': answer}], index.embedder)
         return result
-    raise RuntimeError('The assistant exceeded its search budget. Please try a more specific question.')
+    raise AgentError('The assistant exceeded its search budget. Please try a more specific question.')
 
 
 def execute_tool(call, session, index, sources, seen, emit):
@@ -268,7 +273,7 @@ def execute_tool(call, session, index, sources, seen, emit):
         try:
             passages = store().search(session, query, index.embedder, order=arguments.get('order', 'relevance'), role=arguments.get('role', 'any'))
         except Exception as error:
-            raise RuntimeError('Conversation memory search is temporarily unavailable. Please try again.') from error
+            raise AgentError('Conversation memory search is temporarily unavailable. Please try again.') from error
         for passage in passages:
             if passage['text'].startswith('assistant:'):
                 passage['text'] = strip_citations(passage['text'])
@@ -281,7 +286,7 @@ def execute_tool(call, session, index, sources, seen, emit):
     try:
         matches = index.search(query, limit=5)
     except Exception as error:
-        raise RuntimeError('Published-source search is temporarily unavailable. Please try again.') from error
+        raise AgentError('Published-source search is temporarily unavailable. Please try again.') from error
     passages = []
     for match in matches:
         chunk = match.chunk
@@ -303,4 +308,4 @@ def run_agent(question, session, index, emit=lambda *_: None):
     try:
         return _run_agent(question, session, index, emit)
     except (sqlite3.Error, OSError) as error:
-        raise RuntimeError('Conversation storage is temporarily unavailable. Please try again.') from error
+        raise AgentError('Conversation storage is temporarily unavailable. Please try again.') from error
