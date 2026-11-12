@@ -12,7 +12,8 @@ COPY static ./static
 COPY data ./data
 COPY tests/eval_cases.json ./tests/eval_cases.json
 
-RUN useradd --create-home --uid 10001 appuser \
+RUN chmod -R a+rX /app \
+    && useradd --create-home --uid 10001 appuser \
     && mkdir -p /app/.cache/fastembed /app/state \
     && chown -R appuser:appuser /app/.cache /app/state
 USER appuser
