@@ -43,7 +43,7 @@ class RetrievalTests(unittest.TestCase):
             )
             chunks = load_chunks(root)
             self.assertGreater(len(chunks), 1)
-            self.assertTrue(all(len(chunk.tokens) <= 140 for chunk in chunks))
+            self.assertTrue(all(len(chunk.tokens) <= 100 for chunk in chunks))
             self.assertTrue(all(chunk.title == "Useful Article" for chunk in chunks))
             self.assertTrue(
                 all(chunk.heading == "Important Section" for chunk in chunks)

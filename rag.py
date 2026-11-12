@@ -198,7 +198,7 @@ def _split_block(text: str, max_tokens: int, overlap: int) -> list[str]:
 
 
 def _chunk_text(
-    text: str, max_tokens: int = 140, overlap: int = 20
+    text: str, max_tokens: int = 100, overlap: int = 12
 ) -> tuple[str, str, list[tuple[str, str]]]:
     """Build short Markdown-aware chunks safe for MiniLM's 256-wordpiece limit."""
     title, url, blocks = _document_parts(text)

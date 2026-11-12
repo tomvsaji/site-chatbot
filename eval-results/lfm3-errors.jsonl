@@ -1,0 +1,8 @@
+{"path": "/api/chat", "status": 400, "body": "{\"error\": \"Invalid request.\"}"}
+{"path": "/api/chat", "status": 403, "body": "{\"error\": \"Origin not allowed.\"}"}
+{"path": "/api/chat", "status": 429, "body": "{\"error\": \"Please wait before asking again.\"}"}
+{"path": "/api/chat", "status": 429, "body": "{\"error\": \"Please wait before asking again.\"}"}
+{"path": "/api/chat", "status": 429, "body": "{\"error\": \"Please wait before asking again.\"}"}
+{"path": "/api/chat", "status": 429, "body": "{\"error\": \"Please wait before asking again.\"}"}
+{"path": "/api/chat", "status": 503, "body": "{\"error\": \"The local language model is warming up or unavailable.\"}"}
+{"path": "/api/chat/stream", "status": 200, "body": "event: status\ndata: {\"message\": \"Searching published sources\u2026\"}\n\nevent: status\ndata: {\"message\": \"Generating grounded answer\u2026\"}\n\nevent: error\ndata: {\"error\": \"The local language model is warming up or unavailable.\"}\n\n"}

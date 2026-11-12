@@ -1,3 +1,8 @@
+> Current architecture (2026-11-10): native LLM search tools, 8192-token context,
+> and private compressed/searchable conversation memory are documented in
+> [AGENT_SETUP.md](AGENT_SETUP.md). The older pipeline and benchmark discussion
+> below is historical and does not describe the current request routing.
+
 # Site Chatbot
 
 A small, self-hosted “chat with my data” demonstration for this VPS. It combines:
@@ -5,7 +10,7 @@ A small, self-hosted “chat with my data” demonstration for this VPS. It comb
 - a small Python web application;
 - heading-aware hybrid BM25 and vector retrieval over approved Markdown, text, and JSON files;
 - FastEmbed embeddings stored persistently in Qdrant;
-- a CPU-only, quantized Qwen3 4B model served by llama.cpp;
+- a CPU-only, quantized LiquidAI LFM3 1.7B Q4_K_M model served by llama.cpp;
 - HTTPS routing through the VPS's existing Traefik instance.
 
 The browser never talks to the model directly. The model container has no
@@ -49,7 +54,7 @@ The public defaults are deliberately conservative:
 ```dotenv
 REQUESTS_PER_MINUTE=3
 REQUESTS_PER_HOUR=20
-MAX_MODEL_REQUESTS=2
+MAX_MODEL_REQUESTS=1
 MAX_QUESTION_CHARS=800
 ALLOWED_ORIGINS=https://chat.srv1619516.hstgr.cloud,https://tomvsaji.com,https://www.tomvsaji.com
 ```
@@ -95,7 +100,7 @@ docker compose up -d --build
 docker compose logs -f app llm qdrant
 ```
 
-The first start downloads the model and can take several minutes. Once the model
+Run `bash ops/download-model` before the first start. Once the model
 reports that the server is listening, visit the configured HTTPS hostname.
 
 Useful checks:
@@ -110,7 +115,7 @@ curl https://chat.srv1619516.hstgr.cloud/health
 
 - This 2-vCPU server is suitable for a demo and light personal traffic, not many
   simultaneous users.
-- Keep the minute/hour limits and two-request global model capacity enabled.
+- Keep the minute/hour limits and single-request global model capacity enabled.
   Add an upstream challenge if the endpoint attracts sustained distributed abuse.
 - Back up `data/` and pin container images to tested immutable digests.
 - Retrieval uses reciprocal-rank fusion to combine semantic Qdrant results with
@@ -165,3 +170,66 @@ stored in GitHub.
 This repository currently has no open-source license. Copyright remains with
 the repository owner, and no reuse rights are granted except where required by
 law.
+
+## LFM3 operation (2026-11-09)
+
+Production is `/srv/site-chatbot`; editable source is `/home/codex/site-chatbot`.
+The post-trained `LiquidAI/LFM3-1.7B` uses the official
+`LiquidAI/LFM3-1.7B-GGUF` Q4_K_M artifact at revision
+`cd0c74c575b5c416f3011b5b4c298077f26ca8c2`. File SHA256:
+`3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4`.
+The file is 1,099,627,808 bytes (check installed file for authoritative size).
+It is downloaded separately; weights are excluded from Git and image builds.
+
+The CPU runtime is llama.cpp `0.8.0-dev`, build `11960`, commit `8642541b2`,
+image `ghcr.io/ggml-org/llama.cpp:server-b11960`, pinned by digest in Compose.
+Liquid's official documentation requires b11960 or later for LFM3:
+https://docs.liquid.ai/deployment/on-device/llama-cpp . Model reference:
+https://huggingface.co/LiquidAI/LFM3-1.7B . Do not use the older generic
+installation examples on that page as an LFM3 version recommendation.
+
+From the chosen checkout:
+
+```bash
+bash ops/download-model
+docker compose -p site-chatbot config -q
+docker compose -p site-chatbot up -d --build
+curl --fail http://127.0.0.1:8082/health
+curl --fail https://chat.srv1619516.hstgr.cloud/health
+docker compose -p site-chatbot logs --tail 50 app llm
+```
+
+Keep `.env` server-side with mode 0600. `CHAT_HOST`, `SITE_NAME`,
+`ALLOWED_ORIGINS`, `REQUESTS_PER_MINUTE`, `REQUESTS_PER_HOUR`,
+`MAX_MODEL_REQUESTS`, `MAX_QUESTION_CHARS`, `MIN_SEMANTIC_SCORE`,
+`MIN_LEXICAL_SCORE`, `EMBEDDING_MODEL`, and `QDRANT_COLLECTION` configure
+hosting and retrieval. Compose fixes the chat model to `LiquidAI/LFM3-1.7B`;
+`LLM_BASE_URL` is internal `http://llm:8080/v1`. No chat provider key is needed.
+There is no alternate chat model route or browser model selector. Do not expose
+llm or Qdrant ports publicly. App port 8082 is loopback-only for diagnostics;
+Traefik provides existing public TLS routing. Existing origin restrictions and
+rate limits remain. This site has no login in its existing application.
+
+Two CPU threads, one inference slot, 4096 context tokens and 320 output tokens (512 for explanatory requests) (512 for explanatory requests)
+bound inference work. Sampling is temperature 0.1, top-k 50 and repeat penalty
+1.1. Reasoning is disabled. The browser uses SSE; only complete validated cited
+claims stream to the user. The last eight messages, each at most 800 characters,
+resolve follow-up retrieval; prior assistant prose is excluded from generation.
+The preserved MiniLM embedding model and Qdrant/BM25 retrieval supply factual
+site context. Unsupported questions still abstain. Inference failures return
+HTTP 503 for JSON chat or an SSE error event. App `/health` reports retrieval
+readiness and configuration, not model readiness; test a real chat after every
+deployment. One extra attempt against the same model may check strong sources.
+
+Runtime limits are 2500 MiB for inference, 768 MiB for app, 512 MiB for Qdrant.
+Total runtime use exceeds weight size. Measure cgroup `memory.peak` inside each
+container and `docker stats`; page-cache accounting differs between these.
+Python dependency versions measured on this deployment: fastembed 0.7.4,
+qdrant-client 1.16.2, ONNX Runtime 1.31.1. The existing requirements ranges are
+retained; rebuilds can resolve newer compatible dependencies.
+
+The deployment hook downloads/checks the pinned weights before starting.
+Copy reviewed source into the deployment checkout or deploy a committed main
+revision through the existing restricted SSH hook. This session deployed local
+files; publishing changes upstream is a separate step. Do not run the old
+installer against this running deployment: it checks out upstream source.

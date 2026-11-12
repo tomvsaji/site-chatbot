@@ -5,14 +5,20 @@ services:
     environment:
       DATA_DIR: /app/data
       LLM_BASE_URL: http://llm:8080/v1
-      LLM_MODEL: ${LLM_MODEL:-Qwen/Qwen3-4B-GGUF:Q4_K_M}
+      LLM_MODEL: LiquidAI/LFM3-1.7B
+      LLM_CONTEXT_SIZE: "8192"
+      STATE_DIR: /app/state
+      MAX_AGENT_SEARCHES: ${MAX_AGENT_SEARCHES:-3}
+      RECENT_HISTORY_MESSAGES: ${RECENT_HISTORY_MESSAGES:-4}
+      MAX_SESSION_TURNS: ${MAX_SESSION_TURNS:-40}
+      MEMORY_TTL_DAYS: ${MEMORY_TTL_DAYS:-7}
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-site_chunks}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
       EMBEDDING_CACHE_DIR: /app/.cache/fastembed
       REQUESTS_PER_MINUTE: ${REQUESTS_PER_MINUTE:-3}
       REQUESTS_PER_HOUR: ${REQUESTS_PER_HOUR:-20}
-      MAX_MODEL_REQUESTS: ${MAX_MODEL_REQUESTS:-2}
+      MAX_MODEL_REQUESTS: ${MAX_MODEL_REQUESTS:-1}
       MAX_QUESTION_CHARS: ${MAX_QUESTION_CHARS:-800}
       MIN_SEMANTIC_SCORE: ${MIN_SEMANTIC_SCORE:-0.22}
       MIN_LEXICAL_SCORE: ${MIN_LEXICAL_SCORE:-2.0}
@@ -20,7 +26,10 @@ services:
       SITE_NAME: ${SITE_NAME:-Ask My Site}
     volumes:
       - ./data:/app/data:ro
+      - conversation-data:/app/state
       - embedding-cache:/app/.cache/fastembed
+    ports:
+      - 127.0.0.1:8082:8080
     mem_limit: 768m
     depends_on:
       - llm
@@ -40,17 +49,19 @@ services:
     mem_limit: 512m
 
   llm:
-    image: ghcr.io/ggml-org/llama.cpp:server
+    image: ghcr.io/ggml-org/llama.cpp:server-b11960@sha256:8052c13edd987de8858f8150031e025ac3d66823f09cf3ec8220899c4abce220
     restart: unless-stopped
     command:
-      - ${LLM_MODEL_SOURCE_ARG:--hf}
-      - ${LLM_MODEL:-Qwen/Qwen3-4B-GGUF:Q4_K_M}
+      - -m
+      - /models/LFM3-1.7B-Q4_K_M.gguf
+      - --alias
+      - LiquidAI/LFM3-1.7B
       - --host
       - 0.0.0.0
       - --port
       - "8080"
       - --ctx-size
-      - "4096"
+      - "8192"
       - --threads
       - "2"
       - --threads-batch
@@ -58,16 +69,18 @@ services:
       - --parallel
       - "1"
       - --reasoning
-      - ${LLM_REASONING:-off}
+      - "off"
       - --n-predict
-      - "320"
+      - "640"
+      - --jinja
+      - --no-reasoning-preserve
     environment:
       HF_HOME: /root/.cache/huggingface
     volumes:
-      - model-cache:/root/.cache
-    mem_limit: 4g
+      - ./models:/models:ro
+    mem_limit: 2500m
 
 volumes:
-  model-cache:
+  conversation-data:
   embedding-cache:
   qdrant-data:

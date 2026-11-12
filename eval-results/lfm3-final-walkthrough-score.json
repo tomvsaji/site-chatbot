@@ -1,0 +1,68 @@
+{
+  "scenario_id": "sql-explorer-depth",
+  "turn_id": "explorer-steps",
+  "question": "Walk me through the process.",
+  "answer": "The agent starts with `list_tables` (Step 1) to discover available data sources such as employees, attendance, approved_leave, and absence_records. [1]\n\nStep 2 calls `get_schema` for candidate sources; e.g., for employees it shows columns employee_id (VARCHAR), department (VARCHAR), dept_name (VARCHAR), status (VARCHAR) with sample EMP001, D042, Operations, Active. [2]\n\nStep 3 resolves user filter values explicitly: e.g., for 'operations' it runs get_distinct_values(table=\"employees\", column=\"dept_name\", search=\"operations\") returning three matches: Operations and Logistics, IT Operations, Field Operations. It asks clarification before mapping to internal code like D042. [3]\n\nStep 4 generates SQL using COUNT(DISTINCT a.employee_id) to avoid overstating absent count when an employee has multiple absence records in the month. [4]\n\nStep 5 applies a security wrapper: prepends pre-filtered security CTEs (e.g., _sec_employees, _sec_absence) and replaces base table references to make execution robust across CTEs and complex aggregations. [5]\n\nStep 6 handles failure modes explicitly; the happy path is only half the story (details not fully listed but mentioned as ongoing). [6]",
+  "sources": [
+    {
+      "number": 1,
+      "name": "posts/how-a-sql-agent-thinks-explorer-pattern.md",
+      "title": "How a SQL Agent Thinks: Walking Through the Explorer Pattern",
+      "heading": "The Explorer Pattern: Step-by-Step \u203a Step 1 \u2014 Discover available data sources",
+      "url": "https://tomvsaji.com/blogs/how-a-sql-agent-thinks-explorer-pattern",
+      "score": 1.0
+    },
+    {
+      "number": 2,
+      "name": "posts/how-a-sql-agent-thinks-explorer-pattern.md",
+      "title": "How a SQL Agent Thinks: Walking Through the Explorer Pattern",
+      "heading": "The Explorer Pattern: Step-by-Step \u203a Step 2 \u2014 Inspect schema and sample data",
+      "url": "https://tomvsaji.com/blogs/how-a-sql-agent-thinks-explorer-pattern",
+      "score": 1.0
+    },
+    {
+      "number": 3,
+      "name": "posts/how-a-sql-agent-thinks-explorer-pattern.md",
+      "title": "How a SQL Agent Thinks: Walking Through the Explorer Pattern",
+      "heading": "The Explorer Pattern: Step-by-Step \u203a Step 3 \u2014 Resolve user filter values",
+      "url": "https://tomvsaji.com/blogs/how-a-sql-agent-thinks-explorer-pattern",
+      "score": 1.0
+    },
+    {
+      "number": 4,
+      "name": "posts/how-a-sql-agent-thinks-explorer-pattern.md",
+      "title": "How a SQL Agent Thinks: Walking Through the Explorer Pattern",
+      "heading": "The Explorer Pattern: Step-by-Step \u203a Step 4 \u2014 Generate SQL only after grounding",
+      "url": "https://tomvsaji.com/blogs/how-a-sql-agent-thinks-explorer-pattern",
+      "score": 1.0
+    },
+    {
+      "number": 5,
+      "name": "posts/how-a-sql-agent-thinks-explorer-pattern.md",
+      "title": "How a SQL Agent Thinks: Walking Through the Explorer Pattern",
+      "heading": "The Explorer Pattern: Step-by-Step \u203a Step 5 \u2014 Apply the security wrapper",
+      "url": "https://tomvsaji.com/blogs/how-a-sql-agent-thinks-explorer-pattern",
+      "score": 1.0
+    },
+    {
+      "number": 6,
+      "name": "posts/how-a-sql-agent-thinks-explorer-pattern.md",
+      "title": "How a SQL Agent Thinks: Walking Through the Explorer Pattern",
+      "heading": "The Explorer Pattern: Step-by-Step \u203a Step 6 \u2014 Handle failure modes explicitly",
+      "url": "https://tomvsaji.com/blogs/how-a-sql-agent-thinks-explorer-pattern",
+      "score": 1.0
+    }
+  ],
+  "duration_seconds": 43.502,
+  "score": 1.0,
+  "passed": true,
+  "failures": [],
+  "concepts_found": [
+    "discover tables",
+    "inspect schema",
+    "resolve values",
+    "generate after grounding",
+    "security wrapper",
+    "failure handling"
+  ]
+}

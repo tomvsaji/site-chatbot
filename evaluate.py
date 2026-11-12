@@ -21,6 +21,7 @@ CASES_PATH = Path(
 API_URL = os.getenv("EVAL_API_URL", "http://localhost:8080/api/chat")
 MODEL_LABEL = os.getenv("EVAL_MODEL_LABEL", "current")
 OUTPUT_PATH = os.getenv("EVAL_OUTPUT_PATH", "")
+SESSION_COOKIE = ""
 WORD_RE = re.compile(r"\b[\w’'-]+\b", re.UNICODE)
 
 
@@ -41,7 +42,8 @@ class TurnResult:
 def request_answer(
     question: str, history: list[dict], request_number: int
 ) -> tuple[int, dict, float]:
-    payload = json.dumps({"question": question, "history": history}).encode()
+    global SESSION_COOKIE
+    payload = json.dumps({"question": question}).encode()
     # Give each benchmark request a documentation-only IP so application rate
     # limits do not distort a local, sequential model comparison.
     octet_3 = (request_number // 250) % 250
@@ -51,6 +53,7 @@ def request_answer(
         data=payload,
         headers={
             "Content-Type": "application/json",
+            "Cookie": SESSION_COOKIE,
             "X-Forwarded-For": f"198.51.{octet_3}.{octet_4}",
         },
         method="POST",
@@ -59,7 +62,9 @@ def request_answer(
     last_error: Exception | None = None
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(request, timeout=240) as response:
+            with urllib.request.urlopen(request, timeout=300) as response:
+                if response.headers.get("Set-Cookie"):
+                    SESSION_COOKIE = response.headers["Set-Cookie"].split(";", 1)[0]
                 return (
                     response.status,
                     json.load(response),
@@ -203,6 +208,7 @@ def percentile(values: list[float], fraction: float) -> float:
 
 
 def main() -> int:
+    global SESSION_COOKIE
     suite = json.loads(CASES_PATH.read_text(encoding="utf-8"))
     scenarios = suite["scenarios"]
     selected_tags = {
@@ -229,6 +235,7 @@ def main() -> int:
     results: list[TurnResult] = []
     request_number = 0
     for scenario in scenarios:
+        SESSION_COOKIE = ""
         history: list[dict] = []
         previous_answer = ""
         print(f"\n[{scenario['id']}]")

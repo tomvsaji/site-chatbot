@@ -5,7 +5,13 @@ services:
     environment:
       DATA_DIR: /app/data
       LLM_BASE_URL: http://llm:8080/v1
-      LLM_MODEL: ${LLM_MODEL:-ibm-granite/granite-4.0-1b-GGUF:Q8_0}
+      LLM_MODEL: LiquidAI/LFM3-1.7B
+      LLM_CONTEXT_SIZE: "8192"
+      STATE_DIR: /app/state
+      MAX_AGENT_SEARCHES: ${MAX_AGENT_SEARCHES:-3}
+      RECENT_HISTORY_MESSAGES: ${RECENT_HISTORY_MESSAGES:-4}
+      MAX_SESSION_TURNS: ${MAX_SESSION_TURNS:-40}
+      MEMORY_TTL_DAYS: ${MEMORY_TTL_DAYS:-7}
       QDRANT_URL: http://qdrant-dev:6333
       QDRANT_COLLECTION: site_chunks_dev
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
@@ -22,6 +28,7 @@ services:
       - 127.0.0.1:8081:8080
     volumes:
       - ./data:/app/data:ro
+      - conversation-dev-data:/app/state
       - embedding-dev-cache:/app/.cache/fastembed
     mem_limit: 768m
     depends_on:
@@ -47,5 +54,6 @@ networks:
     name: site-chatbot_default
 
 volumes:
+  conversation-dev-data:
   embedding-dev-cache:
   qdrant-dev-data:

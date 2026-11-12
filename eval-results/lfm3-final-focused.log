@@ -1,0 +1,74 @@
+
+[composer-explanation]
+PASS article-overview               27.4s score=0.60
+     Q: Tell me about the lessons for AI engineers blog.
+     A: One of the most transferable lessons is to create an internal benchmark grounded in real tasks from your own environment, such as multi-file bug fixes, refactors, migrations, and test repair, rather than generic public benchmarks. [1]
+
+Why Cursor’s Composer 2 gets close to Claude and Codex-class coding quality at much lower cost, and what AI engineers can learn from its specialization, reinforcement learning in real environments, and infra choices. [2]
+
+Good coding agents also need to avoid wasted tool calls, preserve abstractions, recover from errors, and reach a good solution quickly; those qualities should be represented in the reward design. [3]
+
+Cursor trained much closer to the environment where the model is supposed to work by incorporating speed, tool efficiency, concise interaction patterns, and the ability to maintain abstractions over longer horizons, rather than training a general chat model and only later wrapping it in tools. [4]
+PASS meaning-follow-up              40.9s score=1.00
+     Q: What does this mean: Composer 2 is not just a product launch; it is a useful blueprint for people building specialized AI systems?
+     A: Composer 2’s advantage comes from aligning training and product with real coding workflows, using environments that mirror actual IDE usage, file operations, semantic search, terminal access, tests, and background agents. [3]
+
+The same infrastructure choices (MoE architecture, MXFP8 precision, PyTorch/Ray RL orchestration, KV-cache-aware serving) were chosen to reinforce the product loop of coding, testing, and iterating quickly. [4]
+
+By pricing Composer 2 like a default tool and splitting into two SKUs with equal intelligence levels for lower cost/lower latency, Cursor shows that specialized training can be efficient without being a premium upsell. [1]
+
+The lessons for AI engineers include optimizing for workflows rather than generic intelligence: pick a vertical where outcomes matter and align data, rewards, tools, evaluation, and product design around that loop. [5]
+PASS efficiency-why                 46.0s score=0.83
+     Q: Why is it so efficient according to Tom?
+     A: Cursor trains and evaluates its model in environments that closely resemble the actual product, including real repositories, file operations, semantic search, terminal access, tests, and background agents, using RL rollouts scaled to hundreds of thousands of sandboxed coding environments. [2]
+
+Composer 2 uses infrastructure choices like MoE architecture, MXFP8 precision, PyTorch and Ray-style RL orchestration, and KV-cache-aware serving to reduce compute and make long iterative sessions cheaper to run. [3]
+
+Composer 2’s advantage comes from stack alignment: a narrow domain focus on programming tasks, shared runtime across training and product (the same environments powering RL also power the product experience), and evaluation tied to coding-heavy suites like CursorBench, Terminal-Bench 2.0, and SWE-bench Multilingual. [4]
+
+The efficiency stems from aligning data, rewards, tools, evaluation, and product design around a specific workflow loop (coding, testing, iterating quickly) rather than chasing generic general-purpose intelligence. [5]
+FAIL efficiency-clarification       24.6s score=0.25
+     Q: But why does specialization itself make it more efficient?
+     A: Cursor trains and evaluates its model in environments that closely resemble actual product use, including real repositories, file operations, semantic search, terminal access, tests, and background agents, rather than just toy benchmarks. [3]
+
+The same runtime (infrastructure) used for RL rollouts also powers the product experience, so improvements transfer directly to the coding tool. [4]
+
+By narrowing focus to programming tasks and aligning training data, rewards, tools, evaluation suites (e.g., CursorBench, Terminal-Bench 2.0, SWE-bench Multilingual), and product design around a clear coding workflow, Composer 2 can rival Claude and Codex at lower cost. [3] [5]
+
+Infrastructure choices such as MoE architecture, MXFP8 precision, PyTorch/Ray-style RL orchestration, KV-cache-aware serving, and cache-friendly interaction patterns reduce compute and make long iterative sessions cheaper to run. [4]
+
+The lesson for AI engineers is to optimize for workflows rather than generic intelligence: pick a vertical where outcomes matter, define the loop clearly, and align data, rewards, tools, evaluation, and product design around that loop. [5]
+     - concept coverage 1/4; minimum is 3
+
+[sql-explorer-depth]
+PASS explorer-purpose               29.2s score=1.00
+     Q: Why does the SQL explorer pattern inspect metadata before generating SQL?
+     A: Most text-to-SQL demos show the happy path, but real production environments are messier because table names can be ambiguous and columns store codes instead of labels. [1]
+
+The naive pipeline (user question → LLM → SQL → execute → answer) fails in production for predictable reasons: wrong column assumptions, wrong table selection, and wrong join logic, all without runtime errors. [2]
+
+The explorer pattern forces the agent to do grounded discovery before generating SQL, giving disambiguation before execution, schema-grounded generation based on actual columns and types, traceable reasoning steps, and security invariant enforcement even with complex query structures. [3]
+
+Step 1 — Discover available data sources: the agent starts with list_tables (e.g., employees, attendance, approved_leave, absence_records) to identify join keys and likely candidates before any SQL is written. [4]
+FAIL explorer-steps                 52.6s score=0.00
+     Q: Walk me through the process.
+     A: I couldn't find that in Tom's published site data.
+     - unexpected abstention
+     - missing source 'posts/how-a-sql-agent-thinks-explorer-pattern.md'
+     - answer citations do not match returned sources
+     - concept coverage 0/6; minimum is 5
+     - too concise: 9 words; minimum is 75
+FAIL distinct-count                 35.6s score=0.67
+     Q: Why does Tom use COUNT(DISTINCT employee_id) instead of COUNT(*) in the example?
+     A: Tom uses COUNT(DISTINCT a.employee_id) instead of COUNT(*) to avoid overstating the number of absent employees when one employee has multiple absence records in the month, because COUNT(*) would count each row rather than each unique employee. [1]
+
+The Explorer Pattern emphasizes generating SQL only after grounding source, schema, and filter values are confirmed to prevent wrong column assumptions (e.g., using a department name like 'Operations' instead of the internal code D042), wrong table selection, and incorrect join logic. [3]
+
+Step 5 applies a security wrapper that rewrites table access by prepending deterministic security CTEs (e.g., _sec_employees) before executing base query SQL, making the generation robust across CTEs, self-joins, and complex aggregations. [2]
+
+Step 3 resolves ambiguous user filter values by explicitly asking for distinct values of a column (e.g., department names) before mapping to internal codes like D042, preventing silent wrong answers when multiple departments match a search term. [4]
+     - concept coverage 2/3; minimum is 3
+     - too long: 151 words; maximum is 130
+
+lfm3-1.7b-q4_k_m-final: 4/7 passed (57%); score=0.62; median=35.6s; p95=52.6s
+Report written to eval-results/lfm3-final-focused.json

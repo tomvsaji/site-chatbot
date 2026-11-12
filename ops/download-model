@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+mkdir -p models
+file=models/LFM3-1.7B-Q4_K_M.gguf
+checksum=3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4
+if ! printf '%s  %s\n' "$checksum" "$file" | sha256sum -c - >/dev/null 2>&1; then
+  curl -fL --retry 3 -o "$file.part" https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/cd0c74c575b5c416f3011b5b4c298077f26ca8c2/LFM3-1.7B-Q4_K_M.gguf
+  printf '%s  %s\n' "$checksum" "$file.part" | sha256sum -c -
+  mv "$file.part" "$file"
+fi

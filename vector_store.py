@@ -57,7 +57,7 @@ class HybridIndex:
         raise RuntimeError(f"Qdrant is unavailable at {QDRANT_URL}") from last_error
 
     def _rebuild_vector_index(self) -> None:
-        vectors = list(self.embedder.embed([chunk.text for chunk in self.chunks]))
+        vectors = list(self.embedder.embed([chunk.text for chunk in self.chunks], batch_size=16))
         vector_size = len(vectors[0]) if vectors else 384
 
         if self.client.collection_exists(QDRANT_COLLECTION):
@@ -168,7 +168,7 @@ class HybridIndex:
         ranked = sorted(
             fused_scores.items(),
             key=lambda item: (
-                item[1] + (0.0004 if item[0][0] == "tom-facts.md" else 0.0),
+                item[1],
                 semantic_scores[item[0]],
             ),
             reverse=True,
@@ -179,7 +179,7 @@ class HybridIndex:
             chunk = chunks[key]
             if source and chunk.source != source:
                 continue
-            if not source and source_counts[chunk.source] >= 2:
+            if not source and source_counts[chunk.source] >= 4:
                 continue
             source_counts[chunk.source] += 1
             matches.append(
