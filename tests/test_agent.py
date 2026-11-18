@@ -85,7 +85,7 @@ class AgentTests(unittest.TestCase):
         self.memory = ConversationMemory(Path(self.temp.name) / 'memory.sqlite3')
         self.index = SimpleNamespace(embedder=Embedder(), search=lambda query,limit: [SimpleNamespace(
             chunk=Chunk('sql.md','Tom built an SQL agent.',('sql',),title='SQL',url='https://tomvsaji.com/sql'), score=0.03)])
-        self.patches = [patch('agent.store',return_value=self.memory), patch('agent.fit_context')]
+        self.patches = [patch('agent.CHAT_MODE', 'agent'), patch('agent.store',return_value=self.memory), patch('agent.fit_context')]
         for p in self.patches:
             p.start(); self.addCleanup(p.stop)
 
@@ -185,3 +185,4 @@ class ContextTests(unittest.TestCase):
             agent.fit_context(messages)
         self.assertEqual([m['role'] for m in messages],['system','user','assistant','tool'])
         self.assertEqual(messages[1]['content'],'new')
+

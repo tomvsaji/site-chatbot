@@ -8,6 +8,9 @@ services:
       LLM_MODEL: LiquidAI/LFM3-1.7B
       LLM_CONTEXT_SIZE: "8192"
       STATE_DIR: /app/state
+      CHAT_MODE: ${CHAT_MODE:-simple}
+      MAX_ANSWER_TOKENS: ${MAX_ANSWER_TOKENS:-256}
+      EMBEDDING_THREADS: ${EMBEDDING_THREADS:-1}
       MAX_AGENT_SEARCHES: ${MAX_AGENT_SEARCHES:-3}
       RECENT_HISTORY_MESSAGES: ${RECENT_HISTORY_MESSAGES:-4}
       MAX_SESSION_TURNS: ${MAX_SESSION_TURNS:-40}
@@ -70,3 +73,4 @@ volumes:
   conversation-dev-data:
   embedding-dev-cache:
   qdrant-dev-data:
+
