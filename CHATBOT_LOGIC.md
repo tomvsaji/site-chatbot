@@ -45,3 +45,23 @@ This is a bounded tool-using RAG agent, not an autonomous general-purpose agent.
 It cannot run shell commands, browse external sites, access other sessions or
 change documents. Citation validity does not prove semantic correctness: LFM3
 can still misinterpret evidence or conversation memory.
+
+## Per-response metrics
+
+Successful agent responses include a public `metrics` object in the final SSE
+payload (and JSON response). Timings use a monotonic clock per request, isolated
+with ContextVar. `elapsed_ms` covers agent execution through memory persistence;
+`model_calls` and `model_time_ms` include all generation calls, including tool
+selection, citation correction and memory compression. Template rendering and
+context tokenization are not generation calls. `search_calls` and `search_time_ms`
+cover attempted allowed search_site/search_memory tool execution.
+
+llama.cpp streams request `stream_options.include_usage=true`. Both usage-only
+empty-choice chunks and usage attached to the finish chunk are accepted. Token
+counts are summed once per generation call from runtime usage; no text-length
+estimates are used. If any call lacks valid complete usage, all token totals and
+throughput are null, usage_complete=false, usage_source=unavailable. Model identity,
+call counts and timings remain available. Overall throughput divides total generated
+tokens by full generation-call wall time, including prompt processing and waits;
+it is not decoder-only speed. These counters are ephemeral, contain no prompts,
+credentials or private runtime URLs, and do not alter retrieval or session state.

@@ -1,6 +1,7 @@
 """Bounded native tool loop. The model chooses searches; code executes only allowed tools."""
 from __future__ import annotations
 
+from contextvars import ContextVar
 import hashlib
 import http.client
 import json
@@ -13,6 +14,36 @@ import urllib.request
 from pathlib import Path
 
 from memory import ConversationMemory
+
+
+# Context-local measurements keep concurrent HTTP requests isolated.
+_METRICS = ContextVar('request_metrics', default=None)
+
+
+class RequestMetrics:
+    def __init__(self):
+        self.started = time.monotonic()
+        self.model_calls = self.search_calls = self.usage_calls = 0
+        self.model_time = self.search_time = 0.0
+        self.tokens = dict.fromkeys(('prompt_tokens', 'completion_tokens', 'total_tokens'), 0)
+
+    def record_usage(self, usage):
+        if not isinstance(usage, dict) or not all(type(usage.get(k)) is int and 0 <= usage[k] <= 2**53 - 1 for k in self.tokens):
+            return
+        if usage['total_tokens'] != usage['prompt_tokens'] + usage['completion_tokens']:
+            return
+        self.usage_calls += 1
+        for key in self.tokens:
+            self.tokens[key] += usage[key]
+
+    def result(self):
+        complete = self.model_calls > 0 and self.usage_calls == self.model_calls
+        return {'model': MODEL, 'elapsed_ms': round((time.monotonic() - self.started) * 1000, 3),
+                'model_calls': self.model_calls, 'model_time_ms': round(self.model_time * 1000, 3),
+                'search_calls': self.search_calls, 'search_time_ms': round(self.search_time * 1000, 3),
+                **{key: value if complete else None for key, value in self.tokens.items()},
+                'usage_complete': complete, 'usage_source': 'runtime' if complete else 'unavailable',
+                'tokens_per_second': round(self.tokens['completion_tokens'] / self.model_time, 3) if complete and self.model_time > 0 else None}
 
 
 class AgentError(RuntimeError):
@@ -75,7 +106,7 @@ def session_key(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def post(path, payload, timeout=180):
+def _post(path, payload, timeout=180):
     root = BASE[:-3] if BASE.endswith('/v1') else BASE
     url = BASE + '/chat/completions' if path == 'chat' else root + path
     request = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json'})
@@ -84,6 +115,21 @@ def post(path, payload, timeout=180):
             return json.load(response)
     except (OSError, http.client.HTTPException, ValueError) as error:
         raise AgentError('The local language model is warming up or unavailable. Please try again.') from error
+
+
+def post(path, payload, timeout=180):
+    metrics = _METRICS.get() if path == 'chat' else None
+    started = time.monotonic()
+    if metrics:
+        metrics.model_calls += 1
+    try:
+        result = _post(path, payload, timeout)
+        if metrics:
+            metrics.record_usage(result.get('usage'))
+        return result
+    finally:
+        if metrics:
+            metrics.model_time += time.monotonic() - started
 
 
 def payload(messages, *, tools=True, max_tokens=640):
@@ -141,10 +187,11 @@ def fit_context(messages, *, tools=True):
         del messages[1:end]
 
 
-def stream_completion(request_payload, timeout=180):
-    request_payload = dict(request_payload, stream=True)
+def _stream_completion(request_payload, timeout=180):
+    request_payload = dict(request_payload, stream=True, stream_options={'include_usage': True})
     request = urllib.request.Request(BASE + '/chat/completions', data=json.dumps(request_payload).encode(), headers={'Content-Type': 'application/json'})
     done = False
+    usage = None
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             for line in response:
@@ -155,14 +202,38 @@ def stream_completion(request_payload, timeout=180):
                     done = True
                     break
                 try:
-                    choice = json.loads(data)['choices'][0]
-                    yield choice
+                    chunk = json.loads(data)
+                    if chunk.get('usage') is not None:
+                        usage = chunk['usage']
+                    choices = chunk['choices']
+                    if not isinstance(choices, list):
+                        raise ValueError()
+                    # OpenAI-compatible usage-only final chunks have no choices.
+                    if choices:
+                        yield choices[0]
+                    elif chunk.get('usage') is None:
+                        raise ValueError()
                 except (ValueError, KeyError, IndexError, TypeError) as error:
                     raise AgentError('The inference service returned an invalid stream.') from error
         if not done:
             raise AgentError('The response stream ended unexpectedly. Please try again.')
+        metrics = _METRICS.get()
+        if metrics:
+            metrics.record_usage(usage)
     except (OSError, http.client.HTTPException) as error:
         raise AgentError('The local language model is warming up or unavailable. Please try again.') from error
+
+
+def stream_completion(request_payload, timeout=180):
+    metrics = _METRICS.get()
+    started = time.monotonic()
+    if metrics:
+        metrics.model_calls += 1
+    try:
+        yield from _stream_completion(request_payload, timeout)
+    finally:
+        if metrics:
+            metrics.model_time += time.monotonic() - started
 
 
 def _run_agent(question, session, index, emit=lambda *_: None):
@@ -258,7 +329,7 @@ def _run_agent(question, session, index, emit=lambda *_: None):
     raise AgentError('The assistant exceeded its search budget. Please try a more specific question.')
 
 
-def execute_tool(call, session, index, sources, seen, emit):
+def _execute_tool(call, session, index, sources, seen, emit):
     function = call.get('function', {})
     if os.getenv('AGENT_TRACE') == '1':
         print(json.dumps({'tool_call': function}), flush=True)
@@ -311,8 +382,27 @@ def execute_tool(call, session, index, sources, seen, emit):
     return {'kind': 'untrusted_published_site_passages', 'passages': passages}
 
 
-def run_agent(question, session, index, emit=lambda *_: None):
+def execute_tool(call, session, index, sources, seen, emit):
+    metrics = _METRICS.get()
+    measured = metrics and call.get('function', {}).get('name') in {'search_site', 'search_memory'}
+    started = time.monotonic()
+    if measured:
+        metrics.search_calls += 1
     try:
-        return _run_agent(question, session, index, emit)
+        return _execute_tool(call, session, index, sources, seen, emit)
+    finally:
+        if measured:
+            metrics.search_time += time.monotonic() - started
+
+
+def run_agent(question, session, index, emit=lambda *_: None):
+    metrics = RequestMetrics()
+    token = _METRICS.set(metrics)
+    try:
+        result = _run_agent(question, session, index, emit)
+        result['metrics'] = metrics.result()
+        return result
     except (sqlite3.Error, OSError) as error:
         raise AgentError('Conversation storage is temporarily unavailable. Please try again.') from error
+    finally:
+        _METRICS.reset(token)
