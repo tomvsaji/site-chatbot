@@ -14,10 +14,12 @@ threads, and one active inference request.
    retaining the latest two exchanges. Summary generation permits 192 tokens;
    an exact first-message anchor survives separately. Originals remain searchable. Client-supplied history
    never replaces private memory.
-3. **LLM decisions:** the model decides whether to answer or call a search tool,
-   chooses the query and may refine it. There are no article-name or topic
-   keyword routes. A fixed maximum of three searches and a time budget prevent
-   open-ended execution.
+3. **LLM decisions:** the first model request requires a search; the model chooses
+   website evidence or private conversation memory and writes its own query.
+   Later requests allow a refinement or an answer. There are no article-name or
+   topic keyword routes. The default maximum is two searches (configurable),
+   normally at most three model calls plus one bounded citation-repair retry;
+   token-budget compression can add its own call when needed.
 4. **Site tool:** search_site embeds the query with all-MiniLM-L6-v2, queries
    Qdrant, runs BM25 keyword search, and fuses rankings. Retrieve eight candidates
    and return four short excerpts with titles, headings and citation IDs.
@@ -32,9 +34,14 @@ threads, and one active inference request.
 7. **Output and persistence:** SSE progress streams while unmarked answer text
    remains buffered. After an explicit closing reasoning tag, complete sentence
    prefixes with valid current citations can stream provisionally. A reset clears
-   provisional text on tool rounds, truncation or citation repair. Remove accidental reasoning, check citations, normalize citation formatting,
+   provisional text on tool rounds, truncation or citation repair. Site prefixes
+   wait for at least one current valid citation. Remove accidental reasoning, check citations, normalize citation formatting,
    attach links, emit the validated answer and save completed exchanges. Invalid
-   citations get at most one correction within the existing budgets. Unexpected
+   or missing site citations get at most one correction within the existing
+   budgets. Any site lookup requires current citations or the exact source-free
+   abstention “I couldn't find that in Tom's published site data.” A repeated
+   uncited noncanonical reply fails clearly. Memory-only replies need no site
+   citations. Invalid tool calls never count as successful retrieval. Unexpected
    internal failures are sanitized; safe session/context-limit errors stay clear.
 8. **Limits and cleanup:** default 40 questions per conversation, seven-day
    inactivity retention, bounded stored sessions, and 3/minute plus 20/hour
