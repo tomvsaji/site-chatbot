@@ -40,6 +40,7 @@ class HybridIndex:
         self.embedder = TextEmbedding(
             model_name=EMBEDDING_MODEL,
             cache_dir=EMBEDDING_CACHE_DIR,
+            threads=int(os.getenv("EMBEDDING_THREADS", "1")),
         )
         self.client = QdrantClient(url=QDRANT_URL, timeout=30)
         self._wait_for_qdrant()
@@ -244,3 +245,4 @@ class HybridIndex:
             or match.lexical_score >= MIN_LEXICAL_SCORE
             for match in matches[:2]
         )
+

@@ -85,7 +85,7 @@ class AgentTests(unittest.TestCase):
         self.memory = ConversationMemory(Path(self.temp.name) / 'memory.sqlite3')
         self.index = SimpleNamespace(embedder=Embedder(), search=lambda query,limit: [SimpleNamespace(
             chunk=Chunk('sql.md','Tom built an SQL agent.',('sql',),title='SQL',url='https://tomvsaji.com/sql'), score=0.03)])
-        self.patches = [patch('agent.store',return_value=self.memory), patch('agent.fit_context')]
+        self.patches = [patch('agent.CHAT_MODE', 'agent'), patch('agent.store',return_value=self.memory), patch('agent.fit_context')]
         for p in self.patches:
             p.start(); self.addCleanup(p.stop)
 
@@ -246,3 +246,4 @@ class MetricsTests(unittest.TestCase):
             metrics.record_usage(bad)
         self.assertFalse(metrics.result()['usage_complete'])
         self.assertIsNone(metrics.result()['prompt_tokens'])
+

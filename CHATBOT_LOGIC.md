@@ -1,50 +1,55 @@
-# Current chatbot logic
+# Lightweight website assistant
 
-The model is post-trained LiquidAI/LFM3-1.7B, Q4_K_M, served by pinned llama.cpp
-b11960. The server permits 8192 context tokens, 640 output tokens, two CPU
-threads, and one active inference request.
+`CHAT_MODE=simple` is the default. `CHAT_MODE=agent` retains the old tool loop
+for experiments. Both keep validation, private cookies, per-client/global quotas,
+optional Turnstile and the one-model admission gate.
 
-1. **Server admission:** enforce strict HTTP/JSON framing, approved browser
-   origins, body/header limits, read/write deadlines, bounded HTTP workers,
-   trusted-proxy client identity, per-client/global quotas and optional
-   challenge policy. Turnstile is currently disabled. CORS is not authentication.
-2. **Conversation context:** a private secure cookie selects server-side SQLite
-   memory. Provide a small recent-message window (target two exchanges), a
-   rolling summary capped at 192 generated tokens, and an exact first-message
-   anchor. Original older messages remain searchable. Client-supplied history
-   never replaces private memory.
-3. **LLM decisions:** the model decides whether to answer or call a search tool,
-   chooses the query and may refine it. There are no article-name or topic
-   keyword routes. A fixed maximum of three searches and a time budget prevent
-   open-ended execution.
-4. **Site tool:** search_site embeds the query with all-MiniLM-L6-v2, queries
-   Qdrant, runs BM25 keyword search, and fuses rankings. Return small passages
-   (target 100 lexical tokens), titles, headings, URLs and citation IDs.
-5. **Memory tool:** search_memory retrieves only this session's archived
-   passages using vector/keyword search or model-selected chronological order.
-   It is offered only when older history exists outside the configured recent
-   tail. Memory describes prior discussion; it is not independent site evidence.
-6. **Tool loop:** the server executes only the allowed read-only searches,
-   appends native tool results and asks the model again. The model writes the
-   answer; code controls scope, resources, token budget and citation IDs.
-7. **Output and persistence:** SSE progress streams while answer text is buffered.
-   Remove accidental reasoning, check citations, normalize citation formatting,
-   attach links, emit the validated answer and save completed exchanges. Invalid
-   citations get at most one correction within the existing budgets. Unexpected
-   internal failures are sanitized; safe session/context-limit errors stay clear.
-8. **Limits and cleanup:** default 40 questions per conversation, seven-day
-   inactivity retention, bounded stored sessions, and 3/minute plus 20/hour
-   per-client limits (global 10/minute and 100/hour). Clear deletes that session
-   and rotates its cookie. Limits are in-process and reset with the app.
+1. Validate request/origin/framing and enforce quota/challenge policy.
+2. Exact normalized FAQ aliases return editorial answers with sources and
+   `response_mode=curated`. They store the exchange without embeddings and
+   don't acquire the inference slot, so FAQs work while generation is busy.
+   There is no fuzzy matching or cross-user generated-answer cache.
+3. Other requests acquire one inference slot or get 503/Retry-After.
+4. Read four recent messages, capped at 400 characters each in the prompt.
+   Referential follow-ups include the previous user question in their query.
+   Do one hybrid search for three passages. Irrelevant results abstain without
+   generation. Relevance thresholds remain heuristics, not proofs of scope.
+5. Measure rendered context with template/tokenize endpoints. Generate once,
+   without tools, with a 256-token cap and a prompt requesting at most 80 words.
+   No search planning, citation repair, summaries or archive searches require
+   additional generation calls.
+6. Buffer text; remove closed reasoning prefixes; reject malformed, truncated
+   or incorrectly numbered citations. Uncited output abstains. Citation ID
+   validation doesn't prove factual accuracy or semantic entailment.
+7. Emit answer, sources, response_mode and done. Store plain turns without
+   embedding them. Existing archives remain until deletion/expiry but aren't
+   searched in simple mode.
 
-The standalone chat hostname supports same-origin private memory. A frontend
-on another domain needs a coordinated same-origin proxy/session design; CORS
-permission alone does not enable cross-site memory cookies. See SECURITY.md.
+The standalone UI labels curated/generated answers. The separate Netlify
+frontend should render response_mode too; this repository doesn't contain it.
+SSE final/done and sources remain compatible with clients ignoring the new field.
 
-This is a bounded tool-using RAG agent, not an autonomous general-purpose agent.
-It cannot run shell commands, browse external sites, access other sessions or
-change documents. Citation validity does not prove semantic correctness: LFM3
-can still misinterpret evidence or conversation memory.
+## Resources and limitations
+
+- MAX_ANSWER_TOKENS=256 (64–640 allowed).
+- EMBEDDING_THREADS=1 in both modes.
+- LLM_CPUS=1.0 sets production model CPU quota. It doesn't exclusively reserve
+  a core; app, retrieval and other services still consume CPU.
+- LLM_THREADS=1 sets generation/batch threads to match the default CPU quota.
+- Production global hourly attempts default to 30. Existing .env values override
+  defaults; review runtime configuration explicitly during rollout.
+- One inference slot, no unbounded queue and no automatic retries.
+- Private storage TTL, 40-question session cap and Clear remain. Simple mode
+  cannot recall all old turns or promise a full-conversation summary.
+  Start a fresh session when switching back to agent mode: simple-mode turns
+  have no archive embeddings, so archive search won't recall those turns.
+- Quotas reset on restart. Busy responses, failed challenges and FAQs still
+  consume request quota. Fairness and Turnstile UI integration remain separate
+  hardening work; this isn't an abuse-proof deployment.
+- The 60-second generation socket timeout is an inactivity timeout, not a
+  guaranteed total execution deadline. CPU quota bounds CPU rate, not total work.
+
+See benchmarks/README.md for measurements and rollout gates.
 
 ## Per-response metrics
 
@@ -65,3 +70,8 @@ call counts and timings remain available. Overall throughput divides total gener
 tokens by full generation-call wall time, including prompt processing and waits;
 it is not decoder-only speed. These counters are ephemeral, contain no prompts,
 credentials or private runtime URLs, and do not alter retrieval or session state.
+
+In simple mode these counters cover the one hybrid search and the one generation.
+Curated FAQs report zero search/model calls, measured elapsed time, and unavailable
+token usage because no model was called. The legacy agent retains its metrics.
+
