@@ -19,11 +19,14 @@ Development Compose uses this production model service over its external network
    never replaces private memory.
 3. **LLM decisions:** the first model request produces a strict JSON search plan;
    the same model chooses website evidence or private conversation memory and
-   writes its own query. Code validates the bounded plan and marshals it to the
+   writes its own query. A single action selects profile, writing, all published
+   sources, or private memory; code maps that explicit choice to the existing
+   tool and source filter. Code validates the bounded plan and marshals it to the
    allowlisted tool executor and native tool-call history. This first step uses
    structured model output, not an API-native function call. The current question
-   is the last user message; two short recent messages are untrusted reference
-   data. The exact first-question anchor stays in memory-tool/answer context.
+   is the last user message; only the previous user question (up to 240 characters)
+   is untrusted reference data. Assistant prose is omitted from planning.
+   The exact first-question anchor stays in memory-tool/answer context.
    Later requests allow a refinement or an answer. There are no article-name or
    topic keyword routes. The default maximum is two searches (configurable),
    normally at most three model calls plus one bounded citation-repair retry;
@@ -53,9 +56,17 @@ Development Compose uses this production model service over its external network
    brevity target and appropriate evidence rules. At search-budget exhaustion,
    remove tool schemas from the final request and state no tools are available;
    historical native tool exchanges remain intact.
+   For a first planned site lookup, the answer prompt keeps only the stable
+   rules, current question and current tool query/results; old assistant claims,
+   summary and chronology metadata are omitted. Originals remain stored, and
+   memory-scope answers retain the complete budgeted conversation context.
+   Forced finalization uses a strict JSON object with one `answer` string of
+   1–1200 characters, while retaining the 640-token generation allowance.
+   Buffer and decode that wire format before applying the normal answer checks.
 7. **Output and persistence:** SSE progress streams while unmarked answer text
    remains buffered. After an explicit closing reasoning tag, complete sentence
-   prefixes with valid current citations can stream provisionally. A reset clears
+   prefixes with valid current citations can stream provisionally on native auto
+   rounds. Forced-final JSON never streams provisionally. A reset clears
    provisional text on tool rounds, truncation or citation repair. Site prefixes
    wait for at least one current valid citation. Remove accidental reasoning, check citations, normalize citation formatting,
    attach links, emit the validated answer and save completed exchanges. Invalid
@@ -65,6 +76,9 @@ Development Compose uses this production model service over its external network
    uncited noncanonical reply fails clearly. Memory-only replies need no site
    citations. Invalid tool calls never count as successful retrieval. Unexpected
    internal failures are sanitized; safe session/context-limit errors stay clear.
+   If a bounded answer ends mid-sentence exactly at its character limit, retain
+   only a contiguous complete prefix (each site sentence needs current IDs) and
+   label it shortened; otherwise use the existing single repair or fail clearly.
 8. **Limits and cleanup:** default 40 questions per conversation, seven-day
    inactivity retention, bounded stored sessions, and 3/minute plus 20/hour
    per-client limits (global 10/minute and 100/hour). Clear deletes that session

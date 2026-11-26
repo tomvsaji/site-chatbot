@@ -83,12 +83,17 @@ def completion(content=None, calls=None, finish='stop'):
     return [{'delta':delta, 'finish_reason':finish}]
 
 
+def json_completion(answer, finish='stop'):
+    return completion(json.dumps({'answer':answer}),finish=finish)
+
+
 def call(name='search_site', query='Tom SQL projects'):
     return {'id':'call1', 'type':'function', 'function':{'name':name, 'arguments':json.dumps({'query':query})}}
 
 
 def planning_response(name='search_memory', query='this conversation', usage=None, source_type='all'):
-    response={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({'name':name,'query':query,'source_type':source_type,'order':'relevance','role':'any'})}}]}
+    action = {'profile':'search_profile','writing':'search_writing','all':'search_site'}.get(source_type,source_type) if name=='search_site' else name
+    response={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({'action':action,'query':query,'order':'relevance','role':'any'})}}]}
     if usage is not None:
         response['usage']=usage
     return response
@@ -143,6 +148,23 @@ class AgentTests(unittest.TestCase):
         self.assertIn('Summarize our conversation.',model.call_args.args[0]['messages'][-1]['content'])
         self.assertIn('under 100 words',model.call_args.args[0]['messages'][-1]['content'])
         self.assertEqual(self.memory.snapshot('a')['messages'][-1]['content'],'We discussed SQL agents.')
+
+    def test_site_answer_excludes_old_assistant_claims_but_preserves_archive(self):
+        self.memory.touch('a')
+        self.memory.append('a',[{'role':'user','content':'Previous user question'},{'role':'assistant','content':'Tom built Cursor. FALSE_OLD_CLAIM'}],Embedder())
+        self.memory.summarize('a','FALSE_SUMMARY_CLAIM',0)
+        with patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',return_value=iter(completion('Supported. [1]'))) as model:
+            agent.run_agent('Current factual question','a',self.index)
+        wire=model.call_args.args[0]['messages']
+        self.assertNotIn('FALSE_OLD_CLAIM',str(wire))
+        self.assertNotIn('FALSE_SUMMARY_CLAIM',str(wire))
+        self.assertEqual(sum(m['role']=='system' for m in wire),1)
+        self.assertNotIn('Previous user question',str(wire))
+        self.assertEqual(wire[1]['content'],'Current factual question')
+        self.assertEqual(wire[2]['role'],'assistant')
+        self.assertIn('tool_calls',wire[2])
+        self.assertEqual(wire[3]['role'],'tool')
+        self.assertIn('FALSE_OLD_CLAIM',str(self.memory.snapshot('a')['messages']))
 
     def test_rules_and_tool_schema_stay_stable_as_history_grows(self):
         requests=[]
@@ -229,7 +251,7 @@ class AgentTests(unittest.TestCase):
         requests=[]
         def stream(payload,**kwargs):
             requests.append(payload)
-            return iter(completion(calls=[call()],finish='tool_calls') if len(requests)<2 else completion('Supported. [1]'))
+            return iter(completion(calls=[call()],finish='tool_calls') if len(requests)<2 else json_completion('Supported. [1]'))
         with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion',side_effect=stream):
             agent.run_agent('question','a',self.index)
         self.assertEqual([r.get('tool_choice') for r in requests],['auto',None])
@@ -264,7 +286,7 @@ class AgentTests(unittest.TestCase):
 
     def test_forced_final_citation_repair_repeats_no_tools_and_brevity(self):
         requests=[]
-        replies=iter([completion('Tom built an SQL agent.'),completion('Tom built an SQL agent. [1]')])
+        replies=iter([json_completion('Tom built an SQL agent.'),json_completion('Tom built an SQL agent. [1]')])
         def stream(payload,**kwargs):
             requests.append(payload);return iter(next(replies))
         with patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',side_effect=stream):
@@ -275,8 +297,56 @@ class AgentTests(unittest.TestCase):
             self.assertIn(text,correction)
         self.assertNotIn('You may refine',correction)
 
+    def test_forced_json_answer_never_streams_provisional_json_or_reasoning(self):
+        events=[]
+        def stream(request,**kwargs):
+            self.assertNotIn('tools',request)
+            self.assertEqual(request['max_tokens'],640)
+            schema=request['response_format']['json_schema']['schema']
+            self.assertEqual(schema['properties']['answer']['maxLength'],1200)
+            yield from completion('{"answer":"Private</think>Visible. ',finish=None)
+            self.assertFalse(any(e=='delta' for e,d in events))
+            yield from completion('Final."}',finish='stop')
+        with patch('agent.MAX_SEARCHES',1),patch('agent.stream_completion',side_effect=stream):
+            result=agent.run_agent('question','a',self.index,lambda e,d:events.append((e,d)))
+        self.assertEqual(result['answer'],'Visible. Final.')
+        self.assertNotIn('Private',str(events))
+        self.assertEqual([d['text'] for e,d in events if e=='delta'],['Visible. Final.'])
+
+    def test_forced_json_malformed_or_truncated_answer_is_not_saved(self):
+        for response,error in [(completion('{"answer":',finish='stop'),'answer format'),(json_completion('Partial.',finish='length'),'response limit')]:
+            with self.subTest(error=error),patch('agent.MAX_SEARCHES',1),patch('agent.stream_completion',return_value=iter(response)):
+                with self.assertRaisesRegex(agent.AgentError,error):
+                    agent.run_agent('question',error,self.index)
+                self.assertEqual(self.memory.snapshot(error)['messages'],[])
+
+    def test_bound_hit_shortens_only_complete_current_cited_prefix_and_labels_it(self):
+        prefix='Supported claim. [1] '
+        answer=prefix+'x'*(1200-len(prefix))
+        with patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',return_value=iter(json_completion(answer))):
+            result=agent.run_agent('question','a',self.index)
+        self.assertEqual(result['answer'],'Supported claim. [1]\n\n(Shortened to complete sentences.)')
+        self.assertEqual(result['sources'][0]['number'],1)
+
+    def test_bound_hit_without_safe_prefix_uses_existing_single_repair(self):
+        for corrected in ['Supported. [1]','x'*1200]:
+            replies=iter([json_completion('x'*1200),json_completion(corrected)])
+            with self.subTest(corrected=corrected[:20]),patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
+                if corrected.startswith('Supported'):
+                    result=agent.run_agent('question',corrected,self.index)
+                    self.assertEqual(result['answer'],corrected)
+                else:
+                    with self.assertRaisesRegex(agent.AgentError,'could not complete a supported answer'):
+                        agent.run_agent('question',corrected,self.index)
+                    self.assertEqual(self.memory.snapshot(corrected)['messages'],[])
+
+    def test_bounded_answer_parser_rejects_extra_fields_oversize_and_non_json_prefix(self):
+        for value in ['{"answer":"ok","extra":1}',json.dumps({'answer':'x'*1201}),'{"answer":false}','Private</think>{"answer":"ok"}']:
+            with self.subTest(value=value[:30]),self.assertRaisesRegex(agent.AgentError,'answer format'):
+                agent.parse_bounded_answer(value)
+
     def test_memory_after_site_does_not_bypass_citation_gate(self):
-        replies=iter([completion(calls=[call('search_memory')],finish='tool_calls'),completion('Unsupported factual prose.'),completion('Unsupported factual prose.')])
+        replies=iter([completion(calls=[call('search_memory')],finish='tool_calls'),json_completion('Unsupported factual prose.'),json_completion('Unsupported factual prose.')])
         with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
             with self.assertRaisesRegex(agent.AgentError,'could not produce a supported answer'):
                 agent.run_agent('question','a',self.index)
@@ -355,7 +425,7 @@ class AgentTests(unittest.TestCase):
                 def first():
                     yield from completion('hidden</think>Safe sentence. Next ',finish=None)
                     yield from completion(calls=[call()] if finish=='tool_calls' else None,finish=finish)
-                replies=iter([first(),iter(completion('Supported [1].'))])
+                replies=iter([first(),iter(json_completion('Supported [1].'))])
                 with patch('agent.stream_completion',side_effect=after_memory(lambda *a,**k:next(replies))):
                     if finish=='length':
                         with self.assertRaisesRegex(agent.AgentError,'response limit'):
@@ -407,7 +477,10 @@ class PlanningTests(unittest.TestCase):
         request=post.call_args.args[1]
         self.assertEqual(request['messages'][-1],{'role':'user','content':'CURRENT_QUESTION'})
         self.assertIn('untrusted reference data',request['messages'][0]['content'])
+        self.assertIn('OLD_QUESTION',request['messages'][0]['content'])
+        self.assertNotIn('x',request['messages'][0]['content'].split('Previous user question')[-1])
         self.assertNotIn('x'*401,request['messages'][0]['content'])
+        self.assertEqual(set(request['response_format']['json_schema']['schema']['required']),{'action','query','order','role'})
         self.assertEqual(request['max_tokens'],192)
         self.assertNotIn('tools',request)
         self.assertTrue(request['response_format']['json_schema']['strict'])
@@ -430,10 +503,33 @@ class PlanningTests(unittest.TestCase):
             else:
                 self.assertNotIn('source_type',arguments)
 
-    def test_unknown_source_type_plan_is_rejected(self):
+    def test_unknown_action_plan_is_rejected(self):
         with patch('agent.post',return_value=planning_response('search_site',source_type='secret')):
             with self.assertRaisesRegex(agent.AgentError,'could not plan a valid search'):
                 agent.plan_tool('question',{'messages':[]})
+
+    def test_all_model_selected_actions_map_to_allowlisted_tools_without_query_rules(self):
+        for action,(name,source_type) in agent.PLAN_ACTIONS.items():
+            response={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({'action':action,'query':'Any arbitrary wording','order':'newest','role':'user'})}}]}
+            with patch('agent.post',return_value=response):
+                planned=agent.plan_tool('Another arbitrary question',{'messages':[]})
+            self.assertEqual(planned['function']['name'],name)
+            arguments=json.loads(planned['function']['arguments'])
+            self.assertEqual(arguments['query'],'Any arbitrary wording')
+            if source_type is None:
+                self.assertNotIn('source_type',arguments)
+            else:
+                self.assertEqual(arguments['source_type'],source_type)
+
+    def test_planning_context_contains_only_last_user_question_bounded_to_240(self):
+        snapshot={'messages':[{'role':'user','content':'EARLIER'},{'role':'user','content':'q'*500},{'role':'assistant','content':'ASSISTANT_PROSE_MUST_NOT_ENTER_PLAN'}]}
+        with patch('agent.post',return_value=planning_response()) as post:
+            agent.plan_tool('CURRENT',snapshot)
+        context=post.call_args.args[1]['messages'][0]['content']
+        self.assertIn('q'*240,context)
+        self.assertNotIn('q'*241,context)
+        self.assertNotIn('EARLIER',context)
+        self.assertNotIn('ASSISTANT_PROSE_MUST_NOT_ENTER_PLAN',context)
 
     def test_malformed_truncated_or_unbounded_plan_fails_closed(self):
         base=planning_response()
