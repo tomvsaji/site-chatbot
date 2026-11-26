@@ -3,6 +3,9 @@
 The model is post-trained LiquidAI/LFM3-1.7B, Q4_K_M, served by pinned llama.cpp
 b11960. The server permits 8192 context tokens, 640 output tokens, two CPU
 threads, and one active inference request.
+The optional runtime RAM prompt cache is capped at 256 MiB by default through
+`LLM_PROMPT_CACHE_MIB`, separately from the active model/KV/context allocation.
+Development Compose uses this production model service over its external network.
 
 1. **Server admission:** enforce strict HTTP/JSON framing, approved browser
    origins, body/header limits, read/write deadlines, bounded HTTP workers,
@@ -14,23 +17,42 @@ threads, and one active inference request.
    retaining the latest two exchanges. Summary generation permits 192 tokens;
    an exact first-message anchor survives separately. Originals remain searchable. Client-supplied history
    never replaces private memory.
-3. **LLM decisions:** the first model request requires a search; the model chooses
-   website evidence or private conversation memory and writes its own query.
+3. **LLM decisions:** the first model request produces a strict JSON search plan;
+   the same model chooses website evidence or private conversation memory and
+   writes its own query. Code validates the bounded plan and marshals it to the
+   allowlisted tool executor and native tool-call history. This first step uses
+   structured model output, not an API-native function call. The current question
+   is the last user message; two short recent messages are untrusted reference
+   data. The exact first-question anchor stays in memory-tool/answer context.
    Later requests allow a refinement or an answer. There are no article-name or
    topic keyword routes. The default maximum is two searches (configurable),
    normally at most three model calls plus one bounded citation-repair retry;
    token-budget compression can add its own call when needed.
+   The initial JSON planning step permits 192 tokens and a free-form query
+   of 1–240 characters; answer generation retains its 640-token allowance.
 4. **Site tool:** search_site embeds the query with all-MiniLM-L6-v2, queries
-   Qdrant, runs BM25 keyword search, and fuses rankings. Retrieve eight candidates
+   Qdrant, runs BM25 keyword search, and fuses rankings. The model also selects
+   a document group: `profile` for general identity/career/client overviews,
+   `writing` for named articles or the writing catalog, or `all` when specific
+   technical experience/implementation may need both profile and first-hand
+   writing. Both retrievers filter source metadata before ranking/fusion;
+   the backend never selects a group from query keywords. Native refinements
+   default to `all` if no group is supplied. Retrieve eight candidates
    and return four short excerpts with titles, headings and citation IDs.
    Full source metadata and URLs remain on the server for the final sources.
 5. **Memory tool:** search_memory retrieves only this session's archived
    passages using vector/keyword search or model-selected chronological order.
    Both tool schemas remain available and stable across turns. Memory describes
    prior discussion; it is not independent site evidence.
+   When all history is visible (no archived summary), return only compact
+   visibility/count/first-question metadata instead of re-embedding that history.
 6. **Tool loop:** the server executes only the allowed read-only searches,
    appends native tool results and asks the model again. The model writes the
    answer; code controls scope, resources, token budget and citation IDs.
+   After tool results, a short user control message repeats the original question,
+   brevity target and appropriate evidence rules. At search-budget exhaustion,
+   remove tool schemas from the final request and state no tools are available;
+   historical native tool exchanges remain intact.
 7. **Output and persistence:** SSE progress streams while unmarked answer text
    remains buffered. After an explicit closing reasoning tag, complete sentence
    prefixes with valid current citations can stream provisionally. A reset clears

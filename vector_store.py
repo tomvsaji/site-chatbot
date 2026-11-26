@@ -21,6 +21,7 @@ EMBEDDING_CACHE_DIR = os.getenv(
 )
 MIN_SEMANTIC_SCORE = float(os.getenv("MIN_SEMANTIC_SCORE", "0.22"))
 MIN_LEXICAL_SCORE = float(os.getenv("MIN_LEXICAL_SCORE", "2.0"))
+PROFILE_SOURCES = frozenset({'tom-facts.md', 'site-home.md', 'site-about.md'})
 
 
 @dataclass(frozen=True)
@@ -96,25 +97,21 @@ class HybridIndex:
         )
 
     def _semantic_search(
-        self, query: str, limit: int, source: str | None = None
+        self, query: str, limit: int, source: str | None = None, sources: set[str] | None = None
     ) -> list[tuple[Chunk, float]]:
+        if sources is not None and not sources:
+            return []
+        conditions = []
+        if source:
+            conditions.append(models.FieldCondition(key='source', match=models.MatchValue(value=source)))
+        if sources is not None:
+            conditions.append(models.FieldCondition(key='source', match=models.MatchAny(any=sorted(sources))))
         query_vector = next(self.embedder.query_embed(query)).tolist()
         result = self.client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector,
             limit=limit,
-            query_filter=(
-                models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="source",
-                            match=models.MatchValue(value=source),
-                        )
-                    ]
-                )
-                if source
-                else None
-            ),
+            query_filter=models.Filter(must=conditions) if conditions else None,
             with_payload=True,
         )
         matches: list[tuple[Chunk, float]] = []
@@ -139,14 +136,24 @@ class HybridIndex:
         return matches
 
     def search(
-        self, query: str, limit: int = 5, source: str | None = None
+        self, query: str, limit: int = 5, source: str | None = None, source_type: str = 'all'
     ) -> list[RetrievalMatch]:
         """Fuse semantic and lexical ranks using reciprocal-rank fusion."""
+        if source_type not in {'profile','writing','all'}:
+            raise ValueError('Unknown document source type.')
+        # Document metadata, chosen by the model; never inspect query keywords.
+        available_sources = {chunk.source for chunk in self.chunks}
+        if source_type == 'profile':
+            sources = available_sources.intersection(PROFILE_SOURCES)
+        elif source_type == 'writing':
+            sources = {name for name in available_sources if name == 'site-writing.md' or name.startswith('posts/')}
+        else:
+            sources = None
         candidate_limit = max(limit * 3, 10)
-        semantic = self._semantic_search(query, candidate_limit, source=source)
+        semantic = self._semantic_search(query, candidate_limit, source=source, sources=sources)
         lexical_index = (
-            BM25Index([chunk for chunk in self.chunks if chunk.source == source])
-            if source
+            BM25Index([chunk for chunk in self.chunks if (not source or chunk.source == source) and (sources is None or chunk.source in sources)])
+            if source or sources is not None
             else self.bm25
         )
         lexical = lexical_index.search(query, candidate_limit)
@@ -178,6 +185,8 @@ class HybridIndex:
         for key, score in ranked:
             chunk = chunks[key]
             if source and chunk.source != source:
+                continue
+            if sources is not None and chunk.source not in sources:
                 continue
             if not source and source_counts[chunk.source] >= 4:
                 continue

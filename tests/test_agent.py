@@ -87,10 +87,17 @@ def call(name='search_site', query='Tom SQL projects'):
     return {'id':'call1', 'type':'function', 'function':{'name':name, 'arguments':json.dumps({'query':query})}}
 
 
+def planning_response(name='search_memory', query='this conversation', usage=None, source_type='all'):
+    response={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({'name':name,'query':query,'source_type':source_type,'order':'relevance','role':'any'})}}]}
+    if usage is not None:
+        response['usage']=usage
+    return response
+
+
 def after_memory(response):
     """Valid required retrieval before focused tests of final-answer handling."""
     def stream(payload, **kwargs):
-        if payload['tool_choice'] == 'required':
+        if payload.get('tool_choice') == 'required':
             return iter(completion(calls=[call('search_memory', 'this conversation')], finish='tool_calls'))
         return response(payload, **kwargs) if callable(response) else iter(response)
     return stream
@@ -101,9 +108,9 @@ class AgentTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.memory = ConversationMemory(Path(self.temp.name) / 'memory.sqlite3')
-        self.index = SimpleNamespace(embedder=Embedder(), search=lambda query,limit: [SimpleNamespace(
+        self.index = SimpleNamespace(embedder=Embedder(), search=lambda query,limit,**kwargs: [SimpleNamespace(
             chunk=Chunk('sql.md','Tom built an SQL agent.',('sql',),title='SQL',url='https://tomvsaji.com/sql'), score=0.03)])
-        self.patches = [patch('agent.store',return_value=self.memory), patch('agent.fit_context'), patch('agent.context_tokens', return_value=0)]
+        self.patches = [patch('agent.store',return_value=self.memory), patch('agent.fit_context'), patch('agent.context_tokens', return_value=0), patch('agent.plan_tool',return_value=call('search_memory'))]
         for p in self.patches:
             p.start(); self.addCleanup(p.stop)
 
@@ -111,16 +118,18 @@ class AgentTests(unittest.TestCase):
         requests = []
         def stream(payload, **kwargs):
             requests.append(payload)
-            return iter(completion(calls=[call()], finish='tool_calls') if len(requests)==1 else completion('Tom built an SQL agent. [1]'))
-        with patch('agent.stream_completion', side_effect=stream):
+            return iter(completion('Tom built an SQL agent. [1]'))
+        with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion', side_effect=stream):
             result = agent.run_agent('What has he built?', 'a', self.index)
         self.assertEqual(result['sources'][0]['name'], 'sql.md')
         self.assertEqual([t['function']['name'] for t in requests[0]['tools']], ['search_site', 'search_memory'])
-        self.assertEqual(requests[0]['tool_choice'],'required')
-        self.assertEqual(requests[1]['tool_choice'],'auto')
-        self.assertEqual(requests[1]['messages'][-2]['role'], 'tool')
-        self.assertIn('Tom built an SQL agent', requests[1]['messages'][-2]['content'])
-        self.assertIn('Current published-evidence citation IDs: [1]',requests[1]['messages'][-1]['content'])
+        self.assertEqual(requests[0]['tool_choice'],'auto')
+        self.assertEqual(requests[0]['max_tokens'],640)
+        self.assertEqual(requests[0]['messages'][-2]['role'], 'tool')
+        self.assertIn('Tom built an SQL agent', requests[0]['messages'][-2]['content'])
+        self.assertIn('Current published-evidence citation IDs: [1]',requests[0]['messages'][-1]['content'])
+        self.assertEqual(requests[0]['messages'][-1]['role'],'user')
+        self.assertIn('What has he built?',requests[0]['messages'][-1]['content'])
 
     def test_summary_can_answer_from_history_without_site_search(self):
         self.memory.touch('a')
@@ -130,6 +139,9 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(result['sources'], [])
         self.assertIn('Tell me about SQL agents.', str(model.call_args.args[0]['messages']))
         self.assertIn('first_user_question',model.call_args.args[0]['messages'][1]['content'])
+        self.assertEqual(model.call_args.args[0]['messages'][-1]['role'],'user')
+        self.assertIn('Summarize our conversation.',model.call_args.args[0]['messages'][-1]['content'])
+        self.assertIn('under 100 words',model.call_args.args[0]['messages'][-1]['content'])
         self.assertEqual(self.memory.snapshot('a')['messages'][-1]['content'],'We discussed SQL agents.')
 
     def test_rules_and_tool_schema_stay_stable_as_history_grows(self):
@@ -152,27 +164,62 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(result['first_user_question']['text'],'first exact question')
         self.assertEqual(result['total_messages'],3)
 
+    def test_visible_history_memory_lookup_never_embeds_or_duplicates_messages(self):
+        self.memory.touch('a')
+        self.memory.append('a',[{'role':'user','content':'private first question'}],Embedder())
+        with patch.object(self.memory,'search',side_effect=AssertionError('Visible history must not be searched')):
+            result=agent.execute_tool(call('search_memory'),'a',self.index,{}, {},lambda *_:None)
+        self.assertEqual(result['first_user_question']['text'],'private first question')
+        self.assertEqual(result['total_messages'],1)
+        self.assertTrue(result['all_messages_visible'])
+        self.assertNotIn('passages',result)
+
+    def test_archived_memory_uses_original_private_hybrid_lookup(self):
+        for session in ['a','b']:
+            self.memory.touch(session)
+            self.memory.append(session,[{'role':'user','content':'private first '+session},{'role':'assistant','content':'answer [9]'}],Embedder())
+        snapshot=self.memory.snapshot('a')
+        self.memory.summarize('a','Earlier topic.',snapshot['messages'][0]['id'])
+        with patch.object(self.memory,'search',wraps=self.memory.search) as search:
+            result=agent.execute_tool(call('search_memory'),'a',self.index,{}, {},lambda *_:None)
+        search.assert_called_once()
+        self.assertNotIn('all_messages_visible',result)
+        self.assertIn('private first a',str(result['passages']))
+        self.assertNotIn('private first b',str(result))
+        self.assertNotIn('[9]',str(result['passages']))
+
     def test_unknown_tool_and_malformed_arguments_do_not_execute(self):
         result = agent.execute_tool(call('delete_everything'), 'a', self.index, {}, {}, lambda *_:None)
         self.assertIn('Unknown tool', result['error'])
         bad = call(); bad['function']['arguments']='not json'
         self.assertIn('Invalid arguments', agent.execute_tool(bad,'a',self.index,{}, {},lambda *_:None)['error'])
 
+    def test_query_schema_and_execution_share_bounded_free_form_queries(self):
+        for tool in agent.TOOLS:
+            query_schema=tool['function']['parameters']['properties']['query']
+            self.assertEqual((query_schema['minLength'],query_schema['maxLength']),(1,240))
+        for query in ['', '   ', 'q'*241]:
+            result=agent.execute_tool(call(query=query),'a',self.index,{}, {},lambda *_:None)
+            self.assertIn('Invalid arguments',result['error'])
+        result=agent.execute_tool(call(query='q'*240),'a',self.index,{}, {},lambda *_:None)
+        self.assertIn('passages',result)
+
     def test_search_budget_is_enforced(self):
         with patch('agent.MAX_SEARCHES',1), patch('agent.stream_completion',side_effect=lambda _, **kwargs:iter(completion(calls=[call()],finish='tool_calls'))):
             with self.assertRaisesRegex(RuntimeError,'search budget'):
                 agent.run_agent('Search forever', 'a', self.index)
 
-    def test_first_required_response_without_retrieval_fails_closed(self):
-        with patch('agent.stream_completion',return_value=iter(completion('Unsupported answer.'))):
-            with self.assertRaisesRegex(agent.AgentError,'could not retrieve evidence'):
+    def test_invalid_initial_plan_fails_before_answer_generation(self):
+        with patch('agent.plan_tool',side_effect=agent.AgentError('The assistant could not plan a valid search.')), patch('agent.stream_completion') as stream:
+            with self.assertRaisesRegex(agent.AgentError,'could not plan a valid search'):
                 agent.run_agent('question','a',self.index)
+        stream.assert_not_called()
         self.assertEqual(self.memory.snapshot('a')['messages'],[])
 
     def test_invalid_initial_call_is_not_successful_grounding(self):
         invalid=call();invalid['function']['arguments']='not json'
-        replies=iter([completion(calls=[invalid],finish='tool_calls'),completion('Unsupported factual prose.')])
-        with patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
+        replies=iter([completion('Unsupported factual prose.')])
+        with patch('agent.plan_tool',return_value=invalid), patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
             with self.assertRaisesRegex(agent.AgentError,'could not retrieve evidence'):
                 agent.run_agent('question','a',self.index)
         self.assertEqual(self.memory.snapshot('a')['messages'],[])
@@ -182,28 +229,31 @@ class AgentTests(unittest.TestCase):
         requests=[]
         def stream(payload,**kwargs):
             requests.append(payload)
-            return iter(completion(calls=[call()],finish='tool_calls') if len(requests)<3 else completion('Supported. [1]'))
-        with patch('agent.stream_completion',side_effect=stream):
+            return iter(completion(calls=[call()],finish='tool_calls') if len(requests)<2 else completion('Supported. [1]'))
+        with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion',side_effect=stream):
             agent.run_agent('question','a',self.index)
-        self.assertEqual([r['tool_choice'] for r in requests],['required','auto','none'])
+        self.assertEqual([r.get('tool_choice') for r in requests],['auto',None])
+        self.assertNotIn('tools',requests[-1])
+        self.assertEqual(requests[-1]['messages'][-1]['role'],'user')
+        self.assertIn('No tools are available.',requests[-1]['messages'][-1]['content'])
 
     def test_site_answer_without_citations_is_repaired_and_only_corrected_reply_is_saved(self):
         requests=[]
-        replies=iter([completion(calls=[call()],finish='tool_calls'),completion('Tom built an SQL agent.'),completion('Tom built an SQL agent. [1]')])
+        replies=iter([completion('Tom built an SQL agent.'),completion('Tom built an SQL agent. [1]')])
         def stream(payload,**kwargs):
             requests.append(payload);return iter(next(replies))
-        with patch('agent.stream_completion',side_effect=stream):
+        with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion',side_effect=stream):
             result=agent.run_agent('question','a',self.index)
         self.assertEqual(result['answer'],'Tom built an SQL agent. [1]')
-        self.assertEqual(len(requests),3)
+        self.assertEqual(len(requests),2)
         self.assertIn(agent.SITE_ABSTENTION,requests[-1]['messages'][-1]['content'])
         self.assertEqual(self.memory.snapshot('a')['messages'][-1]['content'],result['answer'])
 
     def test_repeat_uncited_site_prose_fails_but_exact_abstention_is_allowed(self):
         for answer in ['Unsupported factual prose.',agent.SITE_ABSTENTION]:
             with self.subTest(answer=answer):
-                replies=iter([completion(calls=[call()],finish='tool_calls'),completion(answer),completion(answer)])
-                with patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
+                replies=iter([completion(answer),completion(answer)])
+                with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
                     if answer==agent.SITE_ABSTENTION:
                         result=agent.run_agent('question',answer,self.index)
                         self.assertEqual(result['sources'],[])
@@ -212,9 +262,22 @@ class AgentTests(unittest.TestCase):
                             agent.run_agent('question',answer,self.index)
                         self.assertEqual(self.memory.snapshot(answer)['messages'],[])
 
+    def test_forced_final_citation_repair_repeats_no_tools_and_brevity(self):
+        requests=[]
+        replies=iter([completion('Tom built an SQL agent.'),completion('Tom built an SQL agent. [1]')])
+        def stream(payload,**kwargs):
+            requests.append(payload);return iter(next(replies))
+        with patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',side_effect=stream):
+            agent.run_agent('Original question','a',self.index)
+        self.assertTrue(all('tools' not in r for r in requests))
+        correction=requests[-1]['messages'][-1]['content']
+        for text in ['No tools are available.','under 100 words','Original question']:
+            self.assertIn(text,correction)
+        self.assertNotIn('You may refine',correction)
+
     def test_memory_after_site_does_not_bypass_citation_gate(self):
-        replies=iter([completion(calls=[call()],finish='tool_calls'),completion(calls=[call('search_memory')],finish='tool_calls'),completion('Unsupported factual prose.'),completion('Unsupported factual prose.')])
-        with patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
+        replies=iter([completion(calls=[call('search_memory')],finish='tool_calls'),completion('Unsupported factual prose.'),completion('Unsupported factual prose.')])
+        with patch('agent.plan_tool',return_value=call()), patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
             with self.assertRaisesRegex(agent.AgentError,'could not produce a supported answer'):
                 agent.run_agent('question','a',self.index)
 
@@ -316,7 +379,7 @@ class AgentTests(unittest.TestCase):
         with patch.object(self.index,'search',return_value=matches) as search:
             sources={}
             result=agent.execute_tool(call(query='Detail 7'),'a',self.index,sources,{},lambda *_:None)
-        search.assert_called_once_with('Detail 7',limit=8)
+        search.assert_called_once_with('Detail 7',limit=8,source_type='all')
         self.assertEqual(len(result['passages']),4)
         self.assertEqual(len(sources),4)
         self.assertTrue(all(len(p['text'].split())<=112 for p in result['passages']))
@@ -333,6 +396,55 @@ class AgentTests(unittest.TestCase):
         with patch('agent.urllib.request.urlopen',return_value=response):
             with self.assertRaisesRegex(RuntimeError,'ended unexpectedly'):
                 list(agent.stream_completion({}))
+
+
+class PlanningTests(unittest.TestCase):
+    def test_model_selects_scope_with_current_question_last_and_bounded_untrusted_history(self):
+        snapshot={'messages':[{'role':'user','content':'OLD_QUESTION'},{'role':'assistant','content':'x'*2000}]}
+        response=planning_response('search_memory','What did we discuss?')
+        with patch('agent.post',return_value=response) as post:
+            planned=agent.plan_tool('CURRENT_QUESTION',snapshot)
+        request=post.call_args.args[1]
+        self.assertEqual(request['messages'][-1],{'role':'user','content':'CURRENT_QUESTION'})
+        self.assertIn('untrusted reference data',request['messages'][0]['content'])
+        self.assertNotIn('x'*401,request['messages'][0]['content'])
+        self.assertEqual(request['max_tokens'],192)
+        self.assertNotIn('tools',request)
+        self.assertTrue(request['response_format']['json_schema']['strict'])
+        self.assertEqual(planned['function']['name'],'search_memory')
+        self.assertEqual(json.loads(planned['function']['arguments'])['query'],'What did we discuss?')
+
+    def test_site_plan_marshals_only_allowed_site_arguments(self):
+        with patch('agent.post',return_value=planning_response('search_site','Tom AI projects')):
+            planned=agent.plan_tool('question',{'messages':[]})
+        self.assertEqual(json.loads(planned['function']['arguments']),{'query':'Tom AI projects','source_type':'all'})
+        self.assertEqual(planned['id'],'plan_search_0')
+
+    def test_model_selected_source_type_is_forwarded_only_to_site_search(self):
+        for name in ['search_site','search_memory']:
+            with patch('agent.post',return_value=planning_response(name,source_type='profile')):
+                planned=agent.plan_tool('Any freely phrased question',{'messages':[]})
+            arguments=json.loads(planned['function']['arguments'])
+            if name=='search_site':
+                self.assertEqual(arguments['source_type'],'profile')
+            else:
+                self.assertNotIn('source_type',arguments)
+
+    def test_unknown_source_type_plan_is_rejected(self):
+        with patch('agent.post',return_value=planning_response('search_site',source_type='secret')):
+            with self.assertRaisesRegex(agent.AgentError,'could not plan a valid search'):
+                agent.plan_tool('question',{'messages':[]})
+
+    def test_malformed_truncated_or_unbounded_plan_fails_closed(self):
+        base=planning_response()
+        invalid=[]
+        for content in ['not JSON','private reasoning</think>'+base['choices'][0]['message']['content'],json.dumps({'name':'delete_all','query':'q','order':'relevance','role':'any'}),json.dumps({'name':'search_site','query':'q'*241,'order':'relevance','role':'any'}),json.dumps({'name':'search_site','query':'q','order':'relevance','role':'any','extra':'x'})]:
+            invalid.append({'choices':[{'finish_reason':'stop','message':{'content':content}}]})
+        invalid.append({'choices':[{'finish_reason':'length','message':{'content':base['choices'][0]['message']['content']}}]})
+        for response in invalid:
+            with self.subTest(response=response),patch('agent.post',return_value=response):
+                with self.assertRaisesRegex(agent.AgentError,'could not plan a valid search'):
+                    agent.plan_tool('question',{'messages':[]})
 
 
 class ContextTests(unittest.TestCase):
@@ -352,7 +464,13 @@ class ContextTests(unittest.TestCase):
 
 
 class MetricsTests(unittest.TestCase):
-    setUp = AgentTests.setUp
+    def setUp(self):
+        AgentTests.setUp(self)
+        self.patches[-1].stop()  # Exercise actual planner HTTP usage/cache accounting.
+
+    @staticmethod
+    def plan_wire(name='search_memory',usage=None):
+        return io.BytesIO(json.dumps(planning_response(name,usage=usage)).encode())
     @staticmethod
     def wire(choices, usage=None, usage_only=True):
         chunks = [{'choices': [choice]} for choice in choices]
@@ -365,7 +483,7 @@ class MetricsTests(unittest.TestCase):
 
     def test_real_stream_usage_only_chunk_is_counted_across_tool_rounds(self):
         usage = {'prompt_tokens':5, 'completion_tokens':3, 'total_tokens':8, 'prompt_tokens_details':{'cached_tokens':2}}
-        responses = [self.wire(completion(calls=[call()],finish='tool_calls'), usage),
+        responses = [self.plan_wire('search_site',usage),
                      self.wire(completion('Tom built an SQL agent. [1]'), usage, usage_only=False)]
         with patch('agent.urllib.request.urlopen', side_effect=responses) as request:
             result = agent.run_agent('What did Tom build?', 'metrics', self.index)
@@ -380,11 +498,15 @@ class MetricsTests(unittest.TestCase):
         self.assertGreater(stats['tokens_per_second'],0)
         self.assertGreaterEqual(stats['elapsed_ms'], stats['model_time_ms'] + stats['search_time_ms'])
         for args in request.call_args_list:
-            self.assertTrue(json.loads(args.args[0].data)['stream_options']['include_usage'])
+            data=json.loads(args.args[0].data)
+            if data['stream']:
+                self.assertTrue(data['stream_options']['include_usage'])
+            else:
+                self.assertEqual(data['response_format']['type'],'json_schema')
         self.assertIsNone(agent._METRICS.get())
 
     def test_missing_usage_keeps_timings_and_model_but_never_estimates_tokens(self):
-        with patch('agent.urllib.request.urlopen', side_effect=[self.wire(completion(calls=[call('search_memory')],finish='tool_calls')),self.wire(completion('Hello.'))]):
+        with patch('agent.urllib.request.urlopen', side_effect=[self.plan_wire(),self.wire(completion('Hello.'))]):
             result = agent.run_agent('Hello', 'missing', self.index)
         stats = result['metrics']
         self.assertEqual(stats['model_calls'],2)
@@ -398,7 +520,7 @@ class MetricsTests(unittest.TestCase):
         self.memory.touch('summary')
         self.memory.append('summary',[{'role':'user' if i%2==0 else 'assistant','content':f'turn {i}'} for i in range(8)],Embedder())
         summary = io.BytesIO(json.dumps({'choices':[{'message':{'content':'Earlier topics.'}}],'usage':usage}).encode())
-        memory_wire=lambda:self.wire(completion(calls=[call('search_memory')],finish='tool_calls'),usage)
+        memory_wire=lambda:self.plan_wire(usage=usage)
         with patch('agent.context_tokens',return_value=4000), patch('agent.urllib.request.urlopen',side_effect=[summary,memory_wire(),self.wire(completion('We discussed earlier topics.'),usage),memory_wire(),self.wire(completion('Hello.'),usage)]):
             first = agent.run_agent('Summarize', 'summary', self.index)['metrics']
             second = agent.run_agent('Hello', 'separate', self.index)['metrics']

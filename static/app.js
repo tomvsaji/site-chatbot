@@ -78,9 +78,15 @@ async function sendQuestion(question) {
       if (!dataLines.length) return;
       const data = JSON.parse(dataLines.join("\n"));
       if (event === "status") {
+        if (!streamedText && !streamedClaims.length) {
+          pending.classList.add("streaming-status");
+          pendingText.textContent = data.message;
+        }
+      } else if (event === "reset") {
         streamedText = "";
+        streamedClaims.length = 0;
+        pendingText.replaceChildren();
         pending.classList.add("streaming-status");
-        pendingText.textContent = data.message;
       } else if (event === "delta") {
         pending.classList.remove("streaming-status");
         streamedText += data.text;
