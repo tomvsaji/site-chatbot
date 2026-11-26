@@ -1,5 +1,10 @@
 # Benchmark evidence and rollout gate
 
+This retains historical measurements/procedures for optional `CHAT_MODE=simple`.
+The default is now the model-selected agent; see [current logic](../CHATBOT_LOGIC.md)
+and the [optimization log](../OPTIMIZATION_LOG.md) for its matched measurements.
+Local curated-FAQ timings below are not active-agent inference measurements.
+
 ## Actual measurement
 
 On 2026-11-18, 200/200 local FAQ lookups plus private SQLite writes completed:

@@ -104,6 +104,24 @@ class SimpleTests(unittest.TestCase):
 
 
 class FAQHTTPTests(HTTPHarness):
+    def setUp(self):
+        super().setUp()
+        self.stack.enter_context(patch('agent.CHAT_MODE','simple'))
+
+    def test_agent_mode_never_bypasses_inference_admission_with_faq_alias(self):
+        app=__import__('app')
+        app.MODEL_CAPACITY.acquire()
+        try:
+            with patch('agent.CHAT_MODE','agent'),patch('agent.curated_answer') as curated,patch('agent.save_exchange') as save:
+                for path in ('/api/chat','/api/chat/stream'):
+                    status,_,_=self.request('{"question":"What does Tom specialize in?"}',path=path)
+                    self.assertEqual(status,503)
+                curated.assert_not_called()
+                save.assert_not_called()
+        finally:
+            app.MODEL_CAPACITY.release()
+        self.answer.assert_not_called()
+
     def test_faq_works_while_model_busy_for_json_and_sse(self):
         app = __import__('app')
         app.MODEL_CAPACITY.acquire()

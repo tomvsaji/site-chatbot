@@ -47,7 +47,7 @@ TRUSTED_PROXY_CIDRS = tuple(
 )
 MAX_RATE_LIMIT_CLIENTS = int(os.getenv("MAX_RATE_LIMIT_CLIENTS", "4096"))
 GLOBAL_REQUESTS_PER_MINUTE = int(os.getenv("GLOBAL_REQUESTS_PER_MINUTE", "10"))
-GLOBAL_REQUESTS_PER_HOUR = int(os.getenv("GLOBAL_REQUESTS_PER_HOUR", "100"))
+GLOBAL_REQUESTS_PER_HOUR = int(os.getenv("GLOBAL_REQUESTS_PER_HOUR", "30"))
 ALLOWED_ORIGINS = {
     origin.strip()
     for origin in os.getenv(
@@ -574,7 +574,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         # Curated answers pass the same validation, origin, quota and challenge
         # gates but need no inference slot. They remain usable while it is busy.
-        curated = agent.curated_answer(question) if path != "/api/conversation/reset" else None
+        curated = agent.curated_answer(question) if agent.CHAT_MODE == 'simple' and path != "/api/conversation/reset" else None
         if curated is not None:
             try:
                 metrics = agent.RequestMetrics()
@@ -643,4 +643,3 @@ if __name__ == "__main__":
         flush=True,
     )
     BoundedHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
-

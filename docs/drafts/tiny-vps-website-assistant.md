@@ -8,6 +8,10 @@ description: "What a CPU-only website assistant taught me about inference budget
 <!-- Working draft: new VPS measurements and deployment verification are pending.
 Do not publish performance claims until those results are added. -->
 
+> Historical draft for the optional `CHAT_MODE=simple` design. The active default
+> is the model-selected agent described in [current chatbot logic](../../CHATBOT_LOGIC.md).
+> FAQ timings and one-CPU suggestions below do not describe its current runtime.
+
 I wanted to put a small AI assistant on my personal website and write about
 running AI with limited resources. The website lives on Netlify. The model runs
 on my personal VPS, which I also use for experiments and tinkering.

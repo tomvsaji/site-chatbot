@@ -3,17 +3,17 @@
 > [SECURITY.md](SECURITY.md). The older model-comparison narrative below is
 > retained as historical evidence, not a description of the current request path.
 
-## Lightweight default (2026-11-18)
+## Optional lightweight mode (2026-11-18)
 
-The public default is now `CHAT_MODE=simple`: exact curated FAQs, otherwise one
-hybrid retrieval and one short generation. Four bounded recent messages replace
-the model-written summary/archive path. The standalone UI labels curated answers.
-`CHAT_MODE=agent` retains the earlier experimental tool loop. See
-[CHATBOT_LOGIC.md](CHATBOT_LOGIC.md) for current behavior; the agent descriptions
-below are historical when running simple mode.
+The default is `CHAT_MODE=agent`, using the tested model-selected search plan,
+bounded answer protocol and private conversation archive. Explicitly selecting
+`CHAT_MODE=simple` retains upstream's exact curated FAQs, otherwise one hybrid
+retrieval and one short generation with four recent messages. Curated matching
+is disabled in agent mode. The standalone UI labels optional simple responses.
+See [CHATBOT_LOGIC.md](CHATBOT_LOGIC.md) for current behavior.
 
-Production defaults add a one-CPU model quota, one inference thread, one embedding
-thread and 30 global attempts/hour. Existing server `.env` overrides defaults.
+Production defaults use a configurable two-CPU model quota, two inference threads,
+one embedding thread and 30 global attempts/hour. Existing server `.env` overrides defaults.
 These changes need real-model validation before rollout. Local FAQ timings do
 not establish generated-answer speed or VPS responsiveness. See
 [benchmark evidence and procedure](benchmarks/README.md), and the
@@ -262,4 +262,3 @@ Copy reviewed source into the deployment checkout or deploy a committed main
 revision through the existing restricted SSH hook. This session deployed local
 files; publishing changes upstream is a separate step. Do not run the old
 installer against this running deployment: it checks out upstream source.
-

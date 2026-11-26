@@ -1,55 +1,107 @@
-# Lightweight website assistant
+# Current chatbot logic
 
-`CHAT_MODE=simple` is the default. `CHAT_MODE=agent` retains the old tool loop
-for experiments. Both keep validation, private cookies, per-client/global quotas,
-optional Turnstile and the one-model admission gate.
+The model is post-trained LiquidAI/LFM3-1.7B, Q4_K_M, served by pinned llama.cpp
+b11960. The server permits 8192 context tokens, 640 output tokens, two CPU
+threads, and one active inference request.
+The optional runtime RAM prompt cache is capped at 256 MiB by default through
+`LLM_PROMPT_CACHE_MIB`, separately from the active model/KV/context allocation.
+Development Compose uses this production model service over its external network.
+`CHAT_MODE=agent` is the code and Compose default. CPU quota and generation/batch
+threads remain configurable through `LLM_CPUS`/`LLM_THREADS`, defaulting to 2.0/2
+to preserve the measured runtime. Embedding threads default to one, and global
+hourly admission defaults to 30 attempts.
 
-1. Validate request/origin/framing and enforce quota/challenge policy.
-2. Exact normalized FAQ aliases return editorial answers with sources and
-   `response_mode=curated`. They store the exchange without embeddings and
-   don't acquire the inference slot, so FAQs work while generation is busy.
-   There is no fuzzy matching or cross-user generated-answer cache.
-3. Other requests acquire one inference slot or get 503/Retry-After.
-4. Read four recent messages, capped at 400 characters each in the prompt.
-   Referential follow-ups include the previous user question in their query.
-   Do one hybrid search for three passages. Irrelevant results abstain without
-   generation. Relevance thresholds remain heuristics, not proofs of scope.
-5. Measure rendered context with template/tokenize endpoints. Generate once,
-   without tools, with a 256-token cap and a prompt requesting at most 80 words.
-   No search planning, citation repair, summaries or archive searches require
-   additional generation calls.
-6. Buffer text; remove closed reasoning prefixes; reject malformed, truncated
-   or incorrectly numbered citations. Uncited output abstains. Citation ID
-   validation doesn't prove factual accuracy or semantic entailment.
-7. Emit answer, sources, response_mode and done. Store plain turns without
-   embedding them. Existing archives remain until deletion/expiry but aren't
-   searched in simple mode.
+1. **Server admission:** enforce strict HTTP/JSON framing, approved browser
+   origins, body/header limits, read/write deadlines, bounded HTTP workers,
+   trusted-proxy client identity, per-client/global quotas and optional
+   challenge policy. Turnstile is currently disabled. CORS is not authentication.
+2. **Conversation context:** a private secure cookie selects server-side SQLite
+   memory. Keep every unsummarized exchange until the rendered prompt exceeds
+   the default 3,600-token memory budget, then summarize older turns while
+   retaining the latest two exchanges. Summary generation permits 192 tokens;
+   an exact first-message anchor survives separately. Originals remain searchable. Client-supplied history
+   never replaces private memory.
+3. **LLM decisions:** the first model request produces a strict JSON search plan;
+   the same model chooses website evidence or private conversation memory and
+   writes its own query. A single action selects profile, writing, all published
+   sources, or private memory; code maps that explicit choice to the existing
+   tool and source filter. Code validates the bounded plan and marshals it to the
+   allowlisted tool executor and native tool-call history. This first step uses
+   structured model output, not an API-native function call. The current question
+   is the last user message; only the previous user question (up to 240 characters)
+   is untrusted reference data. Assistant prose is omitted from planning.
+   The exact first-question anchor stays in memory-tool/answer context.
+   Later requests allow a refinement or an answer. There are no article-name or
+   topic keyword routes. The default maximum is two searches (configurable),
+   normally at most three model calls plus one bounded citation-repair retry;
+   token-budget compression can add its own call when needed.
+   The initial JSON planning step permits 192 tokens and a free-form query
+   of 1–240 characters; answer generation retains its 640-token allowance.
+4. **Site tool:** search_site embeds the query with all-MiniLM-L6-v2, queries
+   Qdrant, runs BM25 keyword search, and fuses rankings. The model also selects
+   a document group: `profile` for general identity/career/client overviews,
+   `writing` for named articles or the writing catalog, or `all` when specific
+   technical experience/implementation may need both profile and first-hand
+   writing. Both retrievers filter source metadata before ranking/fusion;
+   the backend never selects a group from query keywords. Native refinements
+   default to `all` if no group is supplied. Retrieve eight candidates
+   and return four short excerpts with titles, headings and citation IDs.
+   Full source metadata and URLs remain on the server for the final sources.
+5. **Memory tool:** search_memory retrieves only this session's archived
+   passages using vector/keyword search or model-selected chronological order.
+   Both tool schemas remain available and stable across turns. Memory describes
+   prior discussion; it is not independent site evidence.
+   When all history is visible (no archived summary), return only compact
+   visibility/count/first-question metadata instead of re-embedding that history.
+6. **Tool loop:** the server executes only the allowed read-only searches,
+   appends native tool results and asks the model again. The model writes the
+   answer; code controls scope, resources, token budget and citation IDs.
+   After tool results, a short user control message repeats the original question,
+   brevity target and appropriate evidence rules. At search-budget exhaustion,
+   remove tool schemas from the final request and state no tools are available;
+   historical native tool exchanges remain intact.
+   For a first planned site lookup, the answer prompt keeps only the stable
+   rules, current question and current tool query/results; old assistant claims,
+   summary and chronology metadata are omitted. Originals remain stored, and
+   memory-scope answers retain the complete budgeted conversation context.
+   Forced finalization uses strict JSON with an `answer` string of 1–1200
+   characters and a `citations` array of model-selected current evidence IDs,
+   while retaining the 640-token generation allowance. Site answers select IDs
+   or use exact canonical abstention with []; memory answers use [].
+   Buffer and decode that wire format before applying the normal answer checks.
+7. **Output and persistence:** SSE progress streams while unmarked answer text
+   remains buffered. After an explicit closing reasoning tag, complete sentence
+   prefixes with valid current citations can stream provisionally on native auto
+   rounds. Forced-final JSON never streams provisionally. A reset clears
+   provisional text on tool rounds, truncation or citation repair. Site prefixes
+   wait for at least one current valid citation. Remove accidental reasoning, check citations, normalize citation formatting,
+   attach links, emit the validated answer and save completed exchanges. Invalid
+   or missing site citations get at most one correction within the existing
+   budgets. Any site lookup requires current citations or the exact source-free
+   abstention “I couldn't find that in Tom's published site data.” A repeated
+   uncited noncanonical reply fails clearly. Memory-only replies need no site
+   citations. Invalid tool calls never count as successful retrieval. Unexpected
+   internal failures are sanitized; safe session/context-limit errors stay clear.
+   For bounded JSON answers, validate all declared/inline IDs and append only
+   model-selected markers missing from the prose as a compact Sources footer.
+   Never infer citations from every retrieved passage. Duplicate chosen IDs are
+   deduplicated; valid inline and declared choices form the final source list.
+   If a bounded answer ends mid-sentence exactly at its character limit, retain
+   only a contiguous complete prefix (each site sentence needs current IDs) and
+   label it shortened; otherwise use the existing single repair or fail clearly.
+8. **Limits and cleanup:** default 40 questions per conversation, seven-day
+   inactivity retention, bounded stored sessions, and 3/minute plus 20/hour
+   per-client limits (global 10/minute and 100/hour). Clear deletes that session
+   and rotates its cookie. Limits are in-process and reset with the app.
 
-The standalone UI labels curated/generated answers. The separate Netlify
-frontend should render response_mode too; this repository doesn't contain it.
-SSE final/done and sources remain compatible with clients ignoring the new field.
+The standalone chat hostname supports same-origin private memory. A frontend
+on another domain needs a coordinated same-origin proxy/session design; CORS
+permission alone does not enable cross-site memory cookies. See SECURITY.md.
 
-## Resources and limitations
-
-- MAX_ANSWER_TOKENS=256 (64–640 allowed).
-- EMBEDDING_THREADS=1 in both modes.
-- LLM_CPUS=1.0 sets production model CPU quota. It doesn't exclusively reserve
-  a core; app, retrieval and other services still consume CPU.
-- LLM_THREADS=1 sets generation/batch threads to match the default CPU quota.
-- Production global hourly attempts default to 30. Existing .env values override
-  defaults; review runtime configuration explicitly during rollout.
-- One inference slot, no unbounded queue and no automatic retries.
-- Private storage TTL, 40-question session cap and Clear remain. Simple mode
-  cannot recall all old turns or promise a full-conversation summary.
-  Start a fresh session when switching back to agent mode: simple-mode turns
-  have no archive embeddings, so archive search won't recall those turns.
-- Quotas reset on restart. Busy responses, failed challenges and FAQs still
-  consume request quota. Fairness and Turnstile UI integration remain separate
-  hardening work; this isn't an abuse-proof deployment.
-- The 60-second generation socket timeout is an inactivity timeout, not a
-  guaranteed total execution deadline. CPU quota bounds CPU rate, not total work.
-
-See benchmarks/README.md for measurements and rollout gates.
+This is a bounded tool-using RAG agent, not an autonomous general-purpose agent.
+It cannot run shell commands, browse external sites, access other sessions or
+change documents. Citation validity does not prove semantic correctness: LFM3
+can still misinterpret evidence or conversation memory.
 
 ## Per-response metrics
 
@@ -71,7 +123,36 @@ tokens by full generation-call wall time, including prompt processing and waits;
 it is not decoder-only speed. These counters are ephemeral, contain no prompts,
 credentials or private runtime URLs, and do not alter retrieval or session state.
 
-In simple mode these counters cover the one hybrid search and the one generation.
-Curated FAQs report zero search/model calls, measured elapsed time, and unavailable
-token usage because no model was called. The legacy agent retains its metrics.
+Prompt-cache metadata is independent of token-usage completeness. Valid runtime
+`usage.prompt_tokens_details.cached_tokens` is preferred; pinned-runtime
+`timings.cache_n`/`prompt_n` is accepted only with a consistent prompt-token
+denominator. `cached_prompt_tokens`, `cache_prompt_tokens` and the weighted
+`prompt_cache_reuse_ratio` cover all generation calls, including compression.
+If any call lacks valid cache metadata, `prompt_cache_complete=false` and cache
+totals/ratio are null. Explicit zero means no reuse reported; missing telemetry
+means unavailable. This measures prompt/KV reuse, not an answer cache.
 
+## Explicit optional simple mode
+
+Upstream's `CHAT_MODE=simple` implementation is retained as an opt-in alternative.
+Only in that mode can exact normalized FAQ aliases bypass inference admission;
+they still pass HTTP validation, origin, quota and challenge checks. Other simple
+answers perform one hybrid retrieval and one generation with
+`MAX_ANSWER_TOKENS=256` by default (64–640 configurable). They use four recent
+bounded messages, without model-written summaries, archive lookup or conversation
+embeddings. The standalone page labels curated/generated simple responses.
+
+These FAQ aliases never route an agent-mode request: its search scope and query
+remain model-selected. Simple mode's pronoun-based query extension also stays
+inside the optional simple path. Switching modes should start a fresh session
+because simple-mode messages have no archive vectors. The nullable memory
+embedder compatibility preserves those plain turns without changing agent-mode
+embedding/persistence behavior. Current source-filter/cache/metrics guards remain
+on the agent path; simple-mode metrics measure its one lookup/generation, and
+curated replies report zero model/search calls with unavailable token/cache usage.
+
+The upstream [benchmark procedure](benchmarks/README.md), historical FAQ artifact
+and [unpublished draft](docs/drafts/tiny-vps-website-assistant.md) remain available.
+Their simple-mode timings/defaults are historical evidence, not measurements of
+the optimized agent. Active deployment mode and resource overrides must be checked
+explicitly before comparing those results.

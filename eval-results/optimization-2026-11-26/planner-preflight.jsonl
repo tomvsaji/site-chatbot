@@ -1,0 +1,5 @@
+{"case": "clients", "ok": true, "seconds": 5.388044159859419, "function": {"name": "search_site", "arguments": "{\"query\": \"Tell me some projects or clients he has worked with.\", \"source_type\": \"profile\"}"}}
+{"case": "sql_experience", "ok": true, "seconds": 5.040050666313618, "function": {"name": "search_site", "arguments": "{\"query\": \"Tom Vellavoor Saji SQL agents experience\", \"source_type\": \"all\"}"}}
+{"case": "article_summary", "ok": true, "seconds": 5.484661462716758, "function": {"name": "search_site", "arguments": "{\"query\": \"Building Reliable SQL Agents in Complex On-Prem SQL Environments\", \"source_type\": \"writing\"}"}}
+{"case": "conversation_summary", "ok": true, "seconds": 5.032422727905214, "function": {"name": "search_memory", "arguments": "{\"query\": \"Summarize our conversation so far.\", \"order\": \"relevance\", \"role\": \"user\"}"}}
+{"case": "first_question", "ok": true, "seconds": 4.955709750298411, "function": {"name": "search_memory", "arguments": "{\"query\": \"What was my first question in this conversation?\", \"order\": \"oldest\", \"role\": \"user\"}"}}

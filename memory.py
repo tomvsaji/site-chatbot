@@ -126,4 +126,3 @@ class ConversationMemory:
             db.execute('DELETE FROM passages WHERE session=?', (session,))
             db.execute('DELETE FROM messages WHERE session=?', (session,))
             db.execute('DELETE FROM sessions WHERE id=?', (session,))
-

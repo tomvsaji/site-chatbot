@@ -2,12 +2,15 @@
 
 ## Lightweight-mode update (2026-11-18)
 
-The proposed simple default retains the HTTP security gates below. Curated FAQ
-answers pass quota/challenge checks but skip inference admission. Generated
-answers use one retrieval and one generation, with no chat-history embeddings
-or model-written compaction. Production defaults are now 30 global attempts/hour,
-256 answer tokens, one inference thread, a one-CPU model quota, and one embedding
-thread. Existing `.env` values can override these defaults. See CHATBOT_LOGIC.md
+The optional `CHAT_MODE=simple` retains the HTTP security gates below. In that
+explicit mode only, curated FAQ answers pass quota/challenge checks but skip
+inference admission; other answers use one retrieval/generation without history
+embeddings or compaction. The default `CHAT_MODE=agent` never takes the curated
+shortcut and retains private archive embeddings and token-budget compression.
+Production defaults are 30 global attempts/hour, two inference threads, a
+configurable two-CPU model quota, and one embedding thread. The agent answer
+allowance stays 640 tokens; `MAX_ANSWER_TOKENS=256` applies only to simple mode.
+Existing `.env` values can override these defaults. See CHATBOT_LOGIC.md
 and benchmarks/README.md for current behavior, limitations and rollout gates.
 The older tables below describe the previous 100/hour defaults and agent memory.
 This is not evidence that any live configuration has changed. Turnstile UI,
@@ -217,4 +220,3 @@ does not add that flow to the standalone page.
 This change does not add authentication, change billing, implement the native
 frontend, change the model/retrieval stack, add a shared quota backend, or modify
 the live `/srv/site-chatbot` checkout.
-

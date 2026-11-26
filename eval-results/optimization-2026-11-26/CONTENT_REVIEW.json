@@ -1,0 +1,25 @@
+{
+  "method": "Manual relevance/source review of this small test sequence; not a general accuracy score.",
+  "baseline": {
+    "specialization": "pass",
+    "clients": "partial: some project/client phrasing is imprecise",
+    "sql_experience": "failed request: unsupported citation",
+    "article_summary": "fail: false claim that the known article could not be found",
+    "conversation_summary": "partial: repeats the earlier false article-availability claim",
+    "first_question": "pass"
+  },
+  "candidate": {
+    "specialization": "pass: profile focus; no claim that Tom built Cursor",
+    "clients": "pass: named organizations and side/production projects",
+    "sql_experience": "partial: relevant SQL discussion but an unrelated writing aside remains",
+    "article_summary": "partial: correct article and useful overview; omits detailed security architecture",
+    "conversation_summary": "pass: covers actual preceding discussion, memory scope",
+    "first_question": "pass: exact first successful user question"
+  },
+  "limits": [
+    "Valid citation IDs and model-selected sources do not prove every claim is supported.",
+    "Article summaries can miss details; technical answers can still include unrelated writing.",
+    "One sequential run per variant; shared host/cache and failed baseline turns affect comparability.",
+    "Ordinary structured final answers were buffered; no early-token streaming gain was observed."
+  ]
+}
