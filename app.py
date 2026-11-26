@@ -47,7 +47,7 @@ TRUSTED_PROXY_CIDRS = tuple(
 )
 MAX_RATE_LIMIT_CLIENTS = int(os.getenv("MAX_RATE_LIMIT_CLIENTS", "4096"))
 GLOBAL_REQUESTS_PER_MINUTE = int(os.getenv("GLOBAL_REQUESTS_PER_MINUTE", "10"))
-GLOBAL_REQUESTS_PER_HOUR = int(os.getenv("GLOBAL_REQUESTS_PER_HOUR", "100"))
+GLOBAL_REQUESTS_PER_HOUR = int(os.getenv("GLOBAL_REQUESTS_PER_HOUR", "30"))
 ALLOWED_ORIGINS = {
     origin.strip()
     for origin in os.getenv(
@@ -469,10 +469,12 @@ class Handler(BaseHTTPRequestHandler):
                     "status": "ok",
                     "documents": len(index.chunks),
                     "model": LLM_MODEL,
-                    "retrieval": "agent-hybrid",
+                    "retrieval": "single-hybrid" if agent.CHAT_MODE == "simple" else "agent-hybrid",
                     "context_tokens": agent.CONTEXT,
                     "max_session_turns": agent.MAX_TURNS,
-                    "memory": "private-summary-and-hybrid-archive",
+                    "memory": "private-recent-four-messages" if agent.CHAT_MODE == "simple" else "private-summary-and-hybrid-archive",
+                    "chat_mode": agent.CHAT_MODE,
+                    "max_answer_tokens": agent.MAX_ANSWER_TOKENS if agent.CHAT_MODE == "simple" else 640,
                     "embedding_model": EMBEDDING_MODEL,
                     "vector_collection": QDRANT_COLLECTION,
                 },
@@ -569,6 +571,26 @@ class Handler(BaseHTTPRequestHandler):
                 challenge_status, {"error": "Challenge verification failed. Please try again."},
                 {"Retry-After": "15"} if challenge_status == 503 else None,
             )
+            return
+        # Curated answers pass the same validation, origin, quota and challenge
+        # gates but need no inference slot. They remain usable while it is busy.
+        curated = agent.curated_answer(question) if agent.CHAT_MODE == 'simple' and path != "/api/conversation/reset" else None
+        if curated is not None:
+            try:
+                metrics = agent.RequestMetrics()
+                session = self._conversation()
+                agent.save_exchange(question, curated['answer'], session)
+                curated['metrics'] = metrics.result()
+            except Exception:
+                self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": PUBLIC_SERVICE_ERROR}, {"Retry-After": "15"})
+                return
+            if path == "/api/chat/stream":
+                self._start_sse()
+                self._sse("delta", {"text": curated['answer']})
+                self._sse("final", curated)
+                self._sse("done", {})
+            else:
+                self._json(HTTPStatus.OK, curated)
             return
         if not MODEL_CAPACITY.acquire(blocking=False):
             self._json(

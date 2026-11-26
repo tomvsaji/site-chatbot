@@ -11,6 +11,10 @@ The separate optional RAM prompt-cache budget is 256 MiB, not total runtime RAM.
 The host's fast profile in `/srv/site-chatbot/.env` is:
 
 ```dotenv
+CHAT_MODE=agent
+LLM_CPUS=2.0
+LLM_THREADS=2
+EMBEDDING_THREADS=1
 MAX_AGENT_SEARCHES=1
 MEMORY_TOKEN_BUDGET=3600
 LLM_PROMPT_CACHE_MIB=256
@@ -18,6 +22,8 @@ RECENT_HISTORY_MESSAGES=4
 MAX_SESSION_TURNS=40
 MEMORY_TTL_DAYS=7
 ```
+
+The optional simple/curated mode from another release is preserved for explicit operator use, but is disabled in this active agent deployment. Agent-mode requests never take the FAQ shortcut. The current global hourly request default is 30; existing private environment overrides remain authoritative.
 
 The source default allows two model-selected searches; setting the search budget
 to 2 permits one refinement at extra latency. One bounded citation/format repair

@@ -73,7 +73,8 @@ class ConversationMemory:
             for start in range(0, len(words), 80):
                 text = f"{message['role']}: " + ' '.join(words[start:start + 100])
                 passages.append((index, text))
-        vectors = list(embedder.embed([text for _, text in passages])) if passages else []
+        # Lightweight mode retains plain recent turns without re-embedding chat.
+        vectors = list(embedder.embed([text for _, text in passages])) if passages and embedder is not None else []
         with self.connect() as db:
             ids = []
             for message in messages:

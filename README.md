@@ -3,6 +3,22 @@
 > [SECURITY.md](SECURITY.md). The older model-comparison narrative below is
 > retained as historical evidence, not a description of the current request path.
 
+## Optional lightweight mode (2026-11-18)
+
+The default is `CHAT_MODE=agent`, using the tested model-selected search plan,
+bounded answer protocol and private conversation archive. Explicitly selecting
+`CHAT_MODE=simple` retains upstream's exact curated FAQs, otherwise one hybrid
+retrieval and one short generation with four recent messages. Curated matching
+is disabled in agent mode. The standalone UI labels optional simple responses.
+See [CHATBOT_LOGIC.md](CHATBOT_LOGIC.md) for current behavior.
+
+Production defaults use a configurable two-CPU model quota, two inference threads,
+one embedding thread and 30 global attempts/hour. Existing server `.env` overrides defaults.
+These changes need real-model validation before rollout. Local FAQ timings do
+not establish generated-answer speed or VPS responsiveness. See
+[benchmark evidence and procedure](benchmarks/README.md), and the
+[unpublished blog draft](docs/drafts/tiny-vps-website-assistant.md).
+
 # Site Chatbot
 
 A small, self-hosted “chat with my data” demonstration for this VPS. It combines:

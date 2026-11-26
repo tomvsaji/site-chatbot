@@ -1,5 +1,21 @@
 # Chatbot API security
 
+## Lightweight-mode update (2026-11-18)
+
+The optional `CHAT_MODE=simple` retains the HTTP security gates below. In that
+explicit mode only, curated FAQ answers pass quota/challenge checks but skip
+inference admission; other answers use one retrieval/generation without history
+embeddings or compaction. The default `CHAT_MODE=agent` never takes the curated
+shortcut and retains private archive embeddings and token-budget compression.
+Production defaults are 30 global attempts/hour, two inference threads, a
+configurable two-CPU model quota, and one embedding thread. The agent answer
+allowance stays 640 tokens; `MAX_ANSWER_TOKENS=256` applies only to simple mode.
+Existing `.env` values can override these defaults. See CHATBOT_LOGIC.md
+and benchmarks/README.md for current behavior, limitations and rollout gates.
+The older tables below describe the previous 100/hour defaults and agent memory.
+This is not evidence that any live configuration has changed. Turnstile UI,
+edge verification, quota fairness and total cancellation remain separate work.
+
 The hardened HTTP boundary wraps the native LFM3 agent and private session memory.
 The API is public; CORS/Origin checks are not authentication. No browser API key
 or Turnstile secret belongs in the frontend.

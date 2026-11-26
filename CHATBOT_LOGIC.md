@@ -6,6 +6,10 @@ threads, and one active inference request.
 The optional runtime RAM prompt cache is capped at 256 MiB by default through
 `LLM_PROMPT_CACHE_MIB`, separately from the active model/KV/context allocation.
 Development Compose uses this production model service over its external network.
+`CHAT_MODE=agent` is the code and Compose default. CPU quota and generation/batch
+threads remain configurable through `LLM_CPUS`/`LLM_THREADS`, defaulting to 2.0/2
+to preserve the measured runtime. Embedding threads default to one, and global
+hourly admission defaults to 30 attempts.
 
 1. **Server admission:** enforce strict HTTP/JSON framing, approved browser
    origins, body/header limits, read/write deadlines, bounded HTTP workers,
@@ -127,3 +131,28 @@ denominator. `cached_prompt_tokens`, `cache_prompt_tokens` and the weighted
 If any call lacks valid cache metadata, `prompt_cache_complete=false` and cache
 totals/ratio are null. Explicit zero means no reuse reported; missing telemetry
 means unavailable. This measures prompt/KV reuse, not an answer cache.
+
+## Explicit optional simple mode
+
+Upstream's `CHAT_MODE=simple` implementation is retained as an opt-in alternative.
+Only in that mode can exact normalized FAQ aliases bypass inference admission;
+they still pass HTTP validation, origin, quota and challenge checks. Other simple
+answers perform one hybrid retrieval and one generation with
+`MAX_ANSWER_TOKENS=256` by default (64–640 configurable). They use four recent
+bounded messages, without model-written summaries, archive lookup or conversation
+embeddings. The standalone page labels curated/generated simple responses.
+
+These FAQ aliases never route an agent-mode request: its search scope and query
+remain model-selected. Simple mode's pronoun-based query extension also stays
+inside the optional simple path. Switching modes should start a fresh session
+because simple-mode messages have no archive vectors. The nullable memory
+embedder compatibility preserves those plain turns without changing agent-mode
+embedding/persistence behavior. Current source-filter/cache/metrics guards remain
+on the agent path; simple-mode metrics measure its one lookup/generation, and
+curated replies report zero model/search calls with unavailable token/cache usage.
+
+The upstream [benchmark procedure](benchmarks/README.md), historical FAQ artifact
+and [unpublished draft](docs/drafts/tiny-vps-website-assistant.md) remain available.
+Their simple-mode timings/defaults are historical evidence, not measurements of
+the optimized agent. Active deployment mode and resource overrides must be checked
+explicitly before comparing those results.

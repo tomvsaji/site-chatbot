@@ -8,6 +8,9 @@ services:
       LLM_MODEL: LiquidAI/LFM3-1.7B
       LLM_CONTEXT_SIZE: "8192"
       STATE_DIR: /app/state
+      CHAT_MODE: ${CHAT_MODE:-agent}
+      MAX_ANSWER_TOKENS: ${MAX_ANSWER_TOKENS:-256}
+      EMBEDDING_THREADS: ${EMBEDDING_THREADS:-1}
       MAX_AGENT_SEARCHES: ${MAX_AGENT_SEARCHES:-2}
       RECENT_HISTORY_MESSAGES: ${RECENT_HISTORY_MESSAGES:-4}
       MEMORY_TOKEN_BUDGET: ${MEMORY_TOKEN_BUDGET:-3600}
@@ -24,7 +27,7 @@ services:
       TRUSTED_PROXY_CIDRS: "${TRUSTED_PROXY_CIDRS:-}"
       MAX_RATE_LIMIT_CLIENTS: "${MAX_RATE_LIMIT_CLIENTS:-4096}"
       GLOBAL_REQUESTS_PER_MINUTE: "${GLOBAL_REQUESTS_PER_MINUTE:-10}"
-      GLOBAL_REQUESTS_PER_HOUR: "${GLOBAL_REQUESTS_PER_HOUR:-100}"
+      GLOBAL_REQUESTS_PER_HOUR: "${GLOBAL_REQUESTS_PER_HOUR:-30}"
       MAX_BODY_BYTES: "${MAX_BODY_BYTES:-10000}"
       MAX_HTTP_CONNECTIONS: "${MAX_HTTP_CONNECTIONS:-32}"
       REQUEST_READ_TIMEOUT: "${REQUEST_READ_TIMEOUT:-15}"
@@ -77,9 +80,9 @@ services:
       - --ctx-size
       - "8192"
       - --threads
-      - "2"
+      - "${LLM_THREADS:-2}"
       - --threads-batch
-      - "2"
+      - "${LLM_THREADS:-2}"
       - --parallel
       - "1"
       - --cache-ram
@@ -94,6 +97,7 @@ services:
       HF_HOME: /root/.cache/huggingface
     volumes:
       - ./models:/models:ro
+    cpus: "${LLM_CPUS:-2.0}"
     mem_limit: 2500m
 
 volumes:

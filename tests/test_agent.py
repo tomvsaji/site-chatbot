@@ -117,7 +117,7 @@ class AgentTests(unittest.TestCase):
         self.memory = ConversationMemory(Path(self.temp.name) / 'memory.sqlite3')
         self.index = SimpleNamespace(embedder=Embedder(), search=lambda query,limit,**kwargs: [SimpleNamespace(
             chunk=Chunk('sql.md','Tom built an SQL agent.',('sql',),title='SQL',url='https://tomvsaji.com/sql'), score=0.03)])
-        self.patches = [patch('agent.store',return_value=self.memory), patch('agent.fit_context'), patch('agent.context_tokens', return_value=0), patch('agent.plan_tool',return_value=call('search_memory'))]
+        self.patches = [patch('agent.CHAT_MODE','agent'),patch('agent.store',return_value=self.memory), patch('agent.fit_context'), patch('agent.context_tokens', return_value=0), patch('agent.plan_tool',return_value=call('search_memory'))]
         for p in self.patches:
             p.start(); self.addCleanup(p.stop)
 

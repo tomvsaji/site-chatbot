@@ -1,0 +1,1021 @@
+{
+  "label": "simple-local-workspace",
+  "created_at": "2026-11-18T06:11:51.101600+00:00",
+  "kind": "local-faq-only",
+  "summary": {
+    "curated": {
+      "count": 200,
+      "successful": 200,
+      "p50_seconds": 0.006737716495990753,
+      "p95_seconds": 0.012213889975100756
+    }
+  },
+  "samples": [
+    {
+      "seconds": 0.013939674012362957,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008842712733894587,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005402552895247936,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0042429119348526,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004223834257572889,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004582524299621582,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00958934985101223,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00765244709327817,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.02035596687346697,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005369733087718487,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011965025216341019,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00526921171694994,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007915142923593521,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00441180681809783,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005409422796219587,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010000861249864101,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00493412371724844,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005796536803245544,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008667418733239174,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005819881800562143,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005524276290088892,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004078164231032133,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011895730160176754,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005672309082001448,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0048591019585728645,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007896485272794962,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006425186060369015,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007497152779251337,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0057551139034330845,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0050604259595274925,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007888983935117722,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006679719313979149,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006554360967129469,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007857956923544407,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006578416563570499,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005928375758230686,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011027520056813955,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011758161708712578,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009328244719654322,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009759217035025358,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009953788947314024,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00862237112596631,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008384832181036472,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008286374155431986,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005285514984279871,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010292951948940754,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.01632976019755006,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.01579670701175928,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007983046118170023,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007427307311445475,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009705984964966774,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008504623081535101,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006060836371034384,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007201106287539005,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005826361943036318,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005734833888709545,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00687548378482461,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0072272662073373795,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008359645027667284,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0046810428611934185,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007423100993037224,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005942226853221655,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006458114832639694,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007308159023523331,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011932956986129284,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0043484922498464584,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004014146979898214,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003750789910554886,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003799271769821644,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007463390938937664,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005422272719442844,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009586064144968987,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.015411935281008482,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009514387231320143,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009017746895551682,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011471930891275406,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010500865057110786,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.02545655332505703,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008797936141490936,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009502789005637169,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.012888198252767324,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008516672067344189,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007608721032738686,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008310380857437849,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.019571762066334486,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007457804400473833,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006978180259466171,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006658477243036032,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0042216600850224495,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003675465937703848,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004228279925882816,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004542293958365917,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006683566141873598,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007812547963112593,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007196870166808367,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0072559486143291,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006145744118839502,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007408267818391323,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006971669849008322,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007978839799761772,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007050027139484882,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00566252414137125,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006104771979153156,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004937140271067619,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003192747011780739,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006381979677826166,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0048790317960083485,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004279036074876785,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005355040077120066,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007983185816556215,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0049660829827189445,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005780773237347603,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006469773128628731,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008007362019270658,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0067734308540821075,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00809441413730383,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006501070689409971,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007883626036345959,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007762291003018618,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007100834045559168,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007839458994567394,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0061116828583180904,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0035101468674838543,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004756155889481306,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0045526097528636456,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004743107128888369,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007216768804937601,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007319774944335222,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003959744703024626,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005306587554514408,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00534936273470521,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006770736072212458,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004469573963433504,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00509321503341198,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004312708042562008,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004176381044089794,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005266556981950998,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004369633737951517,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005241808947175741,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0044951229356229305,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006910536903887987,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003444408066570759,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003491109237074852,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006171751767396927,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005794032942503691,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009928580839186907,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007575551047921181,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004142520949244499,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0037650223821401596,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005838068667799234,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0064899129793047905,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004081728868186474,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005156130064278841,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0036487760953605175,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004731039050966501,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004021137021481991,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005409582983702421,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004120097029954195,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.003787646070122719,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005884228274226189,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004741915035992861,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005937419831752777,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0111854188144207,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.013661975972354412,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007964728865772486,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.01002454711124301,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.00795695697888732,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006125842686742544,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009041333105415106,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009462949819862843,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007243931759148836,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006704696919769049,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010285050142556429,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.011409386992454529,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010153240989893675,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009911265689879656,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008978498168289661,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010414534248411655,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008374104741960764,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.013965203892439604,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.012213889975100756,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005222019739449024,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004454531706869602,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004099675919860601,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008730814792215824,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.01152109494432807,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007918199058622122,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006333374883979559,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005208870861679316,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.008167423773556948,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.009042293298989534,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005702643655240536,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007545737084001303,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.010041043162345886,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005894494242966175,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.0036117611452937126,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.004454712383449078,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.005997600965201855,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.007701300550252199,
+      "response_mode": "curated",
+      "success": true
+    },
+    {
+      "seconds": 0.006960583850741386,
+      "response_mode": "curated",
+      "success": true
+    }
+  ],
+  "process_cpu_seconds": 0.42294804500000005,
+  "notes": [
+    "Real local FAQ lookup and SQLite writes in a temporary database.",
+    "Excludes HTTP, quotas, challenge verification, network, embeddings, and generation.",
+    "Not a VPS inference benchmark or evidence of generated-answer latency."
+  ]
+}

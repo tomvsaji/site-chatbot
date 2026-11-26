@@ -35,6 +35,13 @@ function addMessage(text, kind, sources = []) {
   return article;
 }
 
+function labelAnswer(article, mode) {
+  if (!mode) return;
+  const label = document.createElement("small");
+  label.textContent = mode === "curated" ? "Curated FAQ answer" : mode === "generated" ? "AI-generated answer" : "No supporting source found";
+  article.appendChild(label);
+}
+
 async function sendQuestion(question) {
   if (!question) return;
 
@@ -126,7 +133,7 @@ async function sendQuestion(question) {
     if (!result) throw new Error("The response stream ended unexpectedly.");
 
     pending.remove();
-    addMessage(result.answer, "assistant", result.sources);
+    labelAnswer(addMessage(result.answer, "assistant", result.sources), result.response_mode);
   } catch (error) {
     pending.remove();
     addMessage(error.message, "error");
