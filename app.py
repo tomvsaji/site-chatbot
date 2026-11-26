@@ -577,8 +577,10 @@ class Handler(BaseHTTPRequestHandler):
         curated = agent.curated_answer(question) if path != "/api/conversation/reset" else None
         if curated is not None:
             try:
+                metrics = agent.RequestMetrics()
                 session = self._conversation()
                 agent.save_exchange(question, curated['answer'], session)
+                curated['metrics'] = metrics.result()
             except Exception:
                 self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": PUBLIC_SERVICE_ERROR}, {"Retry-After": "15"})
                 return

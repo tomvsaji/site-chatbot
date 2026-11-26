@@ -186,3 +186,64 @@ class ContextTests(unittest.TestCase):
         self.assertEqual([m['role'] for m in messages],['system','user','assistant','tool'])
         self.assertEqual(messages[1]['content'],'new')
 
+
+class MetricsTests(unittest.TestCase):
+    setUp = AgentTests.setUp
+    @staticmethod
+    def wire(choices, usage=None, usage_only=True):
+        chunks = [{'choices': [choice]} for choice in choices]
+        if usage is not None:
+            if usage_only:
+                chunks.append({'choices': [], 'usage': usage})
+            else:
+                chunks[-1]['usage'] = usage
+        return io.BytesIO((''.join('data: ' + json.dumps(chunk) + '\n\n' for chunk in chunks) + 'data: [DONE]\n\n').encode())
+
+    def test_real_stream_usage_only_chunk_is_counted_across_tool_rounds(self):
+        usage = {'prompt_tokens':5, 'completion_tokens':3, 'total_tokens':8}
+        responses = [self.wire(completion(calls=[call()],finish='tool_calls'), usage),
+                     self.wire(completion('Tom built an SQL agent. [1]'), usage, usage_only=False)]
+        with patch('agent.urllib.request.urlopen', side_effect=responses) as request:
+            result = agent.run_agent('What did Tom build?', 'metrics', self.index)
+        stats = result['metrics']
+        self.assertEqual(stats['model'], 'LiquidAI/LFM3-1.7B')
+        self.assertEqual((stats['model_calls'],stats['search_calls']), (2,1))
+        self.assertEqual((stats['prompt_tokens'],stats['completion_tokens'],stats['total_tokens']), (10,6,16))
+        self.assertTrue(stats['usage_complete'])
+        self.assertGreater(stats['tokens_per_second'],0)
+        self.assertGreaterEqual(stats['elapsed_ms'], stats['model_time_ms'] + stats['search_time_ms'])
+        for args in request.call_args_list:
+            self.assertTrue(json.loads(args.args[0].data)['stream_options']['include_usage'])
+        self.assertIsNone(agent._METRICS.get())
+
+    def test_missing_usage_keeps_timings_and_model_but_never_estimates_tokens(self):
+        with patch('agent.urllib.request.urlopen', return_value=self.wire(completion('Hello.'))):
+            result = agent.run_agent('Hello', 'missing', self.index)
+        stats = result['metrics']
+        self.assertEqual(stats['model_calls'],1)
+        self.assertEqual(stats['search_calls'],0)
+        self.assertFalse(stats['usage_complete'])
+        self.assertIsNone(stats['total_tokens'])
+        self.assertIsNone(stats['tokens_per_second'])
+
+    def test_summary_usage_is_included_and_requests_do_not_share_counters(self):
+        usage = {'prompt_tokens':5,'completion_tokens':3,'total_tokens':8}
+        self.memory.touch('summary')
+        self.memory.append('summary',[{'role':'user' if i%2==0 else 'assistant','content':f'turn {i}'} for i in range(8)],Embedder())
+        summary = io.BytesIO(json.dumps({'choices':[{'message':{'content':'Earlier topics.'}}],'usage':usage}).encode())
+        with patch('agent.urllib.request.urlopen',side_effect=[summary,self.wire(completion('We discussed earlier topics.'),usage),self.wire(completion('Hello.'),usage)]):
+            first = agent.run_agent('Summarize', 'summary', self.index)['metrics']
+            second = agent.run_agent('Hello', 'separate', self.index)['metrics']
+        self.assertEqual(first['model_calls'],2)
+        self.assertEqual(first['total_tokens'],16)
+        self.assertEqual(second['model_calls'],1)
+        self.assertEqual(second['total_tokens'],8)
+
+    def test_invalid_and_partial_usage_remain_unavailable(self):
+        metrics = agent.RequestMetrics(); metrics.model_calls = 2
+        metrics.record_usage({'prompt_tokens':5,'completion_tokens':3,'total_tokens':8})
+        for bad in [None,{}, {'prompt_tokens':True,'completion_tokens':3,'total_tokens':4}, {'prompt_tokens':5,'completion_tokens':3,'total_tokens':9}]:
+            metrics.record_usage(bad)
+        self.assertFalse(metrics.result()['usage_complete'])
+        self.assertIsNone(metrics.result()['prompt_tokens'])
+

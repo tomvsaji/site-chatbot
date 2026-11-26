@@ -1,5 +1,7 @@
 """Behavioral checks for the public, bounded single-generation path."""
 import tempfile
+import io
+import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -81,6 +83,19 @@ class SimpleTests(unittest.TestCase):
         result, model = self.generate(text='An unsupported statement.')
         model.assert_called_once()
         self.assertEqual(result['response_mode'], 'out_of_scope')
+
+    def test_runtime_metrics_include_simple_search_and_single_generation_usage(self):
+        stream = io.BytesIO((
+            'data: ' + json.dumps({'choices': [{'delta': {'content': 'Tom builds SQL agents. [1]'}, 'finish_reason': 'stop'}]}) + '\n\n' +
+            'data: ' + json.dumps({'choices': [], 'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8}}) + '\n\ndata: [DONE]\n\n'
+        ).encode())
+        with patch('agent.urllib.request.urlopen', return_value=stream):
+            result = agent.run_agent('Explain SQL agents', 'metrics-simple', self.index)
+        self.assertEqual(result['metrics']['model_calls'], 1)
+        self.assertEqual(result['metrics']['search_calls'], 1)
+        self.assertEqual(result['metrics']['total_tokens'], 8)
+        self.assertTrue(result['metrics']['usage_complete'])
+        self.assertIsNone(agent._METRICS.get())
 
     def test_faq_aliases_are_exact_and_do_not_match_injected_suffixes(self):
         self.assertEqual(agent.curated_answer(' What does Tom specialize in? ')['response_mode'], 'curated')

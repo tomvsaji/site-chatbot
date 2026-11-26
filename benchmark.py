@@ -53,7 +53,7 @@ def ask(client, url, question):
                     if event == 'delta' and data.get('text') and result['first_answer_seconds'] is None:
                         result['first_answer_seconds'] = time.perf_counter() - started
                     if event == 'final':
-                        result.update(answer=data.get('answer'), sources=data.get('sources'), response_mode=data.get('response_mode'))
+                        result.update(answer=data.get('answer'), sources=data.get('sources'), response_mode=data.get('response_mode'), metrics=data.get('metrics'))
                         result['success'] = bool(data.get('answer'))
                     elif event == 'error':
                         result.update(error=data.get('error'), success=False)
