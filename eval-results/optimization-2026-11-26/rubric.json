@@ -1,0 +1,11 @@
+{
+  "method": "Manual semantic review of the same six questions before and after; HTTP success alone is not correctness. No aggregate accuracy benchmark claim from six turns.",
+  "criteria": {
+    "specialization": "Correctly describes Azure AI / enterprise AI / agents with published evidence.",
+    "clients": "Names real organizations or projects; does not claim authorship or client work for products only discussed in writing.",
+    "sql_experience": "Finds relevant SQL-agent article/work rather than unsupported abstention.",
+    "article_summary": "Covers complex on-prem SQL problem, explorer-first approach, safeguards and lessons. Note omission of Security CTE Prefix/read-only validation as incomplete.",
+    "conversation_summary": "Summarizes actual preceding conversation; distinguishes earlier claims from independently verified facts.",
+    "first_question": "Recalls exact first question without adding unsupported client assertions."
+  }
+}

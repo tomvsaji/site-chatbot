@@ -1,0 +1,6 @@
+{
+  "observed_llm_peak_bytes": 1513021440,
+  "samples": 294,
+  "exit_code": 0,
+  "method": "llm container cgroup memory.current sampled every 0.5s; includes runtime cache and model"
+}

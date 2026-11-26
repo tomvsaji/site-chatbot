@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "1586ff034a7f03a6c4968508aff0601945bde442",
+  "model": "LiquidAI/LFM3-1.7B",
+  "quantization": "Q4_K_M",
+  "runtime": "llama.cpp b11960",
+  "context_tokens": 8192,
+  "cpu_threads": 2,
+  "host_vcpus": 2,
+  "host_memory_mib": 7940,
+  "method": "one sequential six-turn conversation on actual host, temporary isolated memory, read-only existing vector index; fixed tiny priming request before sequence; shared runtime caches not flushed, host not exclusive; not a statistical latency distribution",
+  "script": "runner.py",
+  "baseline_file": "baseline.jsonl",
+  "latest_comparison_date": "2026-11-26",
+  "comparison_runtime": "separate isolated service on same host; both baseline and candidate use cache-ram256MiB",
+  "weights_revision": "cd0c74c575b5c416f3011b5b4c298077f26ca8c2",
+  "weights_sha256": "3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4",
+  "candidate_fast_profile": {
+    "MAX_AGENT_SEARCHES": 1,
+    "MEMORY_TOKEN_BUDGET": 3600,
+    "LLM_PROMPT_CACHE_MIB": 256
+  },
+  "baseline_search_budget": 3,
+  "source_scope": "model-selected document metadata, no query keyword routes",
+  "privacy": "all benchmark conversations use public-site test questions and temporary isolated memory; no real visitor conversations were exported",
+  "candidate_code_commit": "cebce0efe6863afaefb8724af4111474b3f4ad27",
+  "candidate_result_file": "candidate.jsonl",
+  "baseline_result_file": "baseline.jsonl"
+}

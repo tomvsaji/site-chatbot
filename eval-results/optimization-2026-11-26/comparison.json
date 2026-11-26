@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-26",
+  "method": "One sequential six-question conversation per variant on same actual host and isolated pinned llama.cpp runtime with 256MiB prompt cache. Disposable conversation memory; read-only existing Qdrant index. Fixed priming request, cache not flushed between variants. Baseline failures change subsequent conversation history. Not an accuracy score or statistical latency distribution. Agent elapsed excludes browser/network admission.",
+  "summary": {
+    "baseline": {
+      "agent_elapsed_seconds": 245.827,
+      "median_agent_seconds": 39.481,
+      "completed": 5,
+      "requests": 6,
+      "model_calls": 11,
+      "prompt_tokens": 11738,
+      "completion_tokens": 1243
+    },
+    "candidate": {
+      "agent_elapsed_seconds": 142.966,
+      "median_agent_seconds": 21.461,
+      "completed": 6,
+      "requests": 6,
+      "model_calls": 12,
+      "prompt_tokens": 7873,
+      "completion_tokens": 851
+    }
+  },
+  "per_case": [
+    {
+      "case": "specialization",
+      "baseline_seconds": 48.492,
+      "candidate_seconds": 22.373,
+      "baseline_completed": true,
+      "candidate_completed": true,
+      "candidate_cache_reuse_ratio": 0.4290375203915171,
+      "candidate_cached_prompt_tokens": 526,
+      "candidate_first_delta_seconds": 22.323
+    },
+    {
+      "case": "clients",
+      "baseline_seconds": 75.579,
+      "candidate_seconds": 20.549,
+      "baseline_completed": true,
+      "candidate_completed": true,
+      "candidate_cache_reuse_ratio": 0.48478260869565215,
+      "candidate_cached_prompt_tokens": 669,
+      "candidate_first_delta_seconds": 20.481
+    },
+    {
+      "case": "sql_experience",
+      "baseline_seconds": 32.718,
+      "candidate_seconds": 29.399,
+      "baseline_completed": false,
+      "candidate_completed": true,
+      "candidate_cache_reuse_ratio": 0.0,
+      "candidate_cached_prompt_tokens": 0,
+      "candidate_first_delta_seconds": 29.334
+    },
+    {
+      "case": "article_summary",
+      "baseline_seconds": 10.075,
+      "candidate_seconds": 19.278,
+      "baseline_completed": true,
+      "candidate_completed": true,
+      "candidate_cache_reuse_ratio": 0.4287974683544304,
+      "candidate_cached_prompt_tokens": 542,
+      "candidate_first_delta_seconds": 19.222
+    },
+    {
+      "case": "conversation_summary",
+      "baseline_seconds": 34.315,
+      "candidate_seconds": 31.841,
+      "baseline_completed": true,
+      "candidate_completed": true,
+      "candidate_cache_reuse_ratio": 0.0,
+      "candidate_cached_prompt_tokens": 0,
+      "candidate_first_delta_seconds": 31.769
+    },
+    {
+      "case": "first_question",
+      "baseline_seconds": 44.648,
+      "candidate_seconds": 19.526,
+      "baseline_completed": true,
+      "candidate_completed": true,
+      "candidate_cache_reuse_ratio": 0.3578113750899928,
+      "candidate_cached_prompt_tokens": 497,
+      "candidate_first_delta_seconds": 19.503
+    }
+  ],
+  "aggregate_reduction_percent": 41.8
+}
