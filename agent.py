@@ -112,8 +112,22 @@ At most SEARCH_LIMIT search calls per answer; then answer from available evidenc
 
 SITE_ABSTENTION = "I couldn't find that in Tom's published site data."
 ANSWER_CHARS = 1200
-ANSWER_SCHEMA = {'type':'object','properties':{'answer':{'type':'string','minLength':1,'maxLength':ANSWER_CHARS}},
-                 'required':['answer'],'additionalProperties':False}
+
+
+def final_answer_schema(sources, *, site_evidence):
+    def shape(answer, citations):
+        return {'type':'object','properties':{'answer':answer,'citations':citations},
+                'required':['answer','citations'],'additionalProperties':False}
+    bounded = {'type':'string','minLength':1,'maxLength':ANSWER_CHARS}
+    empty = {'type':'array','items':{'type':'integer'},'maxItems':0}
+    if not site_evidence:
+        return shape(bounded,empty)
+    abstention = shape({'type':'string','enum':[SITE_ABSTENTION]},empty)
+    if not sources:
+        return abstention
+    selected = {'type':'array','items':{'type':'integer','enum':list(sources)},
+                'minItems':1,'maxItems':len(sources),'uniqueItems':True}
+    return {'anyOf':[shape(bounded,selected),abstention]}
 
 PLAN_ACTIONS = {'search_profile':('search_site','profile'), 'search_writing':('search_site','writing'),
                 'search_site':('search_site','all'), 'search_memory':('search_memory',None)}
@@ -364,10 +378,11 @@ def streamable_prefix(content, sources, *, require_citation=False):
 def parse_bounded_answer(content):
     try:
         parsed = json.loads(content)
-        if (not isinstance(parsed,dict) or set(parsed) != {'answer'}
-                or not isinstance(parsed['answer'],str) or not 1 <= len(parsed['answer']) <= ANSWER_CHARS):
+        if (not isinstance(parsed,dict) or set(parsed) != {'answer','citations'}
+                or not isinstance(parsed['answer'],str) or not 1 <= len(parsed['answer']) <= ANSWER_CHARS
+                or not isinstance(parsed['citations'],list) or any(type(n) is not int for n in parsed['citations'])):
             raise ValueError()
-        return parsed['answer']
+        return parsed['answer'],list(dict.fromkeys(parsed['citations']))
     except (ValueError,TypeError) as error:
         raise AgentError('The assistant returned an invalid answer format. Please try again.') from error
 
@@ -389,15 +404,19 @@ def answer_instruction(question, sources, *, site_evidence, tools_available):
     instruction = ('Answer the original question directly, normally in 2–4 sentences under 100 words unless detail was requested. '
                    'Original question (quoted user data): ' + json.dumps(question, ensure_ascii=False) + '. ')
     if not tools_available:
-        instruction += ('No tools are available. Return only JSON with one "answer" string, '
+        instruction += ('No tools are available. Return only JSON with an "answer" string and "citations" array of your selected current evidence IDs, '
                         f'using complete sentences well below {ANSWER_CHARS} characters. ')
     if site_evidence:
         ids = ', '.join(f'[{n}]' for n in sources) or 'none'
         instruction += (f'Current published-evidence citation IDs: {ids}. Use only supported current evidence and cite every published claim. '
                         'History is not new factual evidence. Do not cite unsupported claims. If evidence cannot answer, reply exactly: ' + SITE_ABSTENTION)
+        if not tools_available:
+            instruction += ' For that exact abstention use citations []; otherwise select the current evidence IDs supporting your answer.'
     else:
         instruction += ('Use the visible conversation and retrieved memory; they are not independent published facts. '
                         'Conversation-only answers need no website citations.')
+        if not tools_available:
+            instruction += ' Use citations [] in JSON.'
     return instruction
 
 
@@ -435,7 +454,7 @@ def _run_agent(question, session, index, emit=lambda *_: None):
         wire_messages = [{k:v for k,v in m.items() if not k.startswith('_')} for m in messages]
         request = payload(wire_messages, tools=False if forced_final else active_tools)
         if forced_final:
-            request['response_format'] = {'type':'json_schema','json_schema':{'name':'final_answer','strict':True,'schema':ANSWER_SCHEMA}}
+            request['response_format'] = {'type':'json_schema','json_schema':{'name':'final_answer','strict':True,'schema':final_answer_schema(sources,site_evidence=site_searched)}}
         emit('status', {'message': 'Thinking about your question…' if not searches else 'Reading results and preparing an answer…'})
         content = ''
         reasoning = ''
@@ -508,8 +527,9 @@ def _run_agent(question, session, index, emit=lambda *_: None):
             reset_stream()
             raise AgentError('The assistant could not retrieve evidence for this question. Please try again.')
         at_answer_bound = False
+        selected_citations = []
         if forced_final:
-            content = parse_bounded_answer(content)
+            content,selected_citations = parse_bounded_answer(content)
             at_answer_bound = len(content) == ANSWER_CHARS
         if '</think>' in content:
             content = content.rsplit('</think>', 1)[1]
@@ -523,9 +543,11 @@ def _run_agent(question, session, index, emit=lambda *_: None):
             if complete:
                 answer = complete + '\n\n(Shortened to complete sentences.)'
                 incomplete_answer = False
-        cited = list(dict.fromkeys(int(n) for n in re.findall(r'\[(\d+)\]', answer)))
-        invalid_citations = any(n not in sources for n in cited)
-        missing_citations = site_searched and not cited and answer != SITE_ABSTENTION
+        inline_citations = list(dict.fromkeys(int(n) for n in re.findall(r'\[(\d+)\]', answer)))
+        cited = list(dict.fromkeys(inline_citations + selected_citations))
+        invalid_citations = (any(n not in sources for n in cited)
+                             or (forced_final and selected_citations and (not site_searched or answer == SITE_ABSTENTION)))
+        missing_citations = site_searched and answer != SITE_ABSTENTION and (not cited or (forced_final and not selected_citations))
         if invalid_citations or missing_citations or incomplete_answer:
             reset_stream()
             if citation_repaired:
@@ -543,6 +565,9 @@ def _run_agent(question, session, index, emit=lambda *_: None):
                 correction += ' You may refine the search within the remaining budget.'
             messages.append({'role':'user', 'content':correction})
             continue
+        missing_markers = [n for n in selected_citations if n not in inline_citations]
+        if missing_markers:
+            answer += '\n\nSources: ' + ' '.join(f'[{n}]' for n in missing_markers)
         result = {'answer': answer, 'sources': [sources[n] for n in cited]}
         if emitted and not answer.startswith(emitted):
             reset_stream()

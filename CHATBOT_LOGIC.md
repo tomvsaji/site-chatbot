@@ -60,8 +60,10 @@ Development Compose uses this production model service over its external network
    rules, current question and current tool query/results; old assistant claims,
    summary and chronology metadata are omitted. Originals remain stored, and
    memory-scope answers retain the complete budgeted conversation context.
-   Forced finalization uses a strict JSON object with one `answer` string of
-   1–1200 characters, while retaining the 640-token generation allowance.
+   Forced finalization uses strict JSON with an `answer` string of 1–1200
+   characters and a `citations` array of model-selected current evidence IDs,
+   while retaining the 640-token generation allowance. Site answers select IDs
+   or use exact canonical abstention with []; memory answers use [].
    Buffer and decode that wire format before applying the normal answer checks.
 7. **Output and persistence:** SSE progress streams while unmarked answer text
    remains buffered. After an explicit closing reasoning tag, complete sentence
@@ -76,6 +78,10 @@ Development Compose uses this production model service over its external network
    uncited noncanonical reply fails clearly. Memory-only replies need no site
    citations. Invalid tool calls never count as successful retrieval. Unexpected
    internal failures are sanitized; safe session/context-limit errors stay clear.
+   For bounded JSON answers, validate all declared/inline IDs and append only
+   model-selected markers missing from the prose as a compact Sources footer.
+   Never infer citations from every retrieved passage. Duplicate chosen IDs are
+   deduplicated; valid inline and declared choices form the final source list.
    If a bounded answer ends mid-sentence exactly at its character limit, retain
    only a contiguous complete prefix (each site sentence needs current IDs) and
    label it shortened; otherwise use the existing single repair or fail clearly.

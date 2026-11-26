@@ -83,8 +83,10 @@ def completion(content=None, calls=None, finish='stop'):
     return [{'delta':delta, 'finish_reason':finish}]
 
 
-def json_completion(answer, finish='stop'):
-    return completion(json.dumps({'answer':answer}),finish=finish)
+def json_completion(answer, finish='stop', citations=None):
+    if citations is None:
+        citations=list(dict.fromkeys(int(n) for n in agent.re.findall(r'\[(\d+)\]',answer)))
+    return completion(json.dumps({'answer':answer,'citations':citations}),finish=finish)
 
 
 def call(name='search_site', query='Tom SQL projects'):
@@ -306,7 +308,7 @@ class AgentTests(unittest.TestCase):
             self.assertEqual(schema['properties']['answer']['maxLength'],1200)
             yield from completion('{"answer":"Private</think>Visible. ',finish=None)
             self.assertFalse(any(e=='delta' for e,d in events))
-            yield from completion('Final."}',finish='stop')
+            yield from completion('Final.","citations":[]}',finish='stop')
         with patch('agent.MAX_SEARCHES',1),patch('agent.stream_completion',side_effect=stream):
             result=agent.run_agent('question','a',self.index,lambda e,d:events.append((e,d)))
         self.assertEqual(result['answer'],'Visible. Final.')
@@ -344,6 +346,59 @@ class AgentTests(unittest.TestCase):
         for value in ['{"answer":"ok","extra":1}',json.dumps({'answer':'x'*1201}),'{"answer":false}','Private</think>{"answer":"ok"}']:
             with self.subTest(value=value[:30]),self.assertRaisesRegex(agent.AgentError,'answer format'):
                 agent.parse_bounded_answer(value)
+
+    def test_model_selected_citations_format_without_another_model_retry(self):
+        with patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',return_value=iter(json_completion('Supported claim.',citations=[1,1])) ) as model:
+            result=agent.run_agent('question','a',self.index)
+        self.assertEqual(model.call_count,1)
+        self.assertEqual(result['answer'],'Supported claim.\n\nSources: [1]')
+        self.assertEqual([s['number'] for s in result['sources']],[1])
+
+    def test_declared_and_inline_model_choices_union_without_inferred_ids(self):
+        extra=SimpleNamespace(chunk=Chunk('extra.md','Second evidence.',('second',),title='Extra',url='https://tomvsaji.com/extra'),score=0.02)
+        first=self.index.search('q',8)[0]
+        with patch.object(self.index,'search',return_value=[first,extra]),patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',return_value=iter(json_completion('Claim. [1]',citations=[2,2]))):
+            result=agent.run_agent('question','a',self.index)
+        self.assertEqual(result['answer'],'Claim. [1]\n\nSources: [2]')
+        self.assertEqual([s['number'] for s in result['sources']],[1,2])
+        with patch.object(self.index,'search',return_value=[first,extra]),patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',return_value=iter(json_completion('Claim.',citations=[1]))):
+            result=agent.run_agent('question','b',self.index)
+        self.assertEqual([s['number'] for s in result['sources']],[1])
+        self.assertNotIn('[2]',result['answer'])
+
+    def test_final_schema_requires_model_selected_ids_or_exact_canonical_abstention(self):
+        schema=agent.final_answer_schema({1:{},2:{}},site_evidence=True)
+        supported,abstention=schema['anyOf']
+        self.assertEqual(supported['properties']['citations']['items']['enum'],[1,2])
+        self.assertEqual(supported['properties']['citations']['minItems'],1)
+        self.assertEqual(abstention['properties']['answer']['enum'],[agent.SITE_ABSTENTION])
+        self.assertEqual(abstention['properties']['citations']['maxItems'],0)
+        self.assertEqual(agent.final_answer_schema({},site_evidence=False)['properties']['citations']['maxItems'],0)
+
+    def test_canonical_and_memory_forced_json_have_no_declared_site_sources(self):
+        with patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',return_value=iter(json_completion(agent.SITE_ABSTENTION,citations=[]))):
+            result=agent.run_agent('question','canonical',self.index)
+        self.assertEqual(result['answer'],agent.SITE_ABSTENTION)
+        self.assertEqual(result['sources'],[])
+        with patch('agent.MAX_SEARCHES',1),patch('agent.stream_completion',return_value=iter(json_completion('We discussed this.',citations=[]))):
+            result=agent.run_agent('question','memory',self.index)
+        self.assertEqual(result['answer'],'We discussed this.')
+        self.assertEqual(result['sources'],[])
+
+    def test_unissued_declared_ids_are_repaired_once_and_never_added_to_footer(self):
+        events=[]
+        replies=iter([json_completion('Claim.',citations=[99]),json_completion('Corrected claim.',citations=[1])])
+        with patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',side_effect=lambda *a,**k:iter(next(replies))):
+            result=agent.run_agent('question','a',self.index,lambda e,d:events.append((e,d)))
+        self.assertNotIn('[99]',str(events))
+        self.assertEqual(result['answer'],'Corrected claim.\n\nSources: [1]')
+
+    def test_canonical_cannot_declare_ids_and_noncanonical_cannot_omit_selections(self):
+        for answer,ids in [(agent.SITE_ABSTENTION,[1]),('Uncited claim.',[])]:
+            with self.subTest(answer=answer),patch('agent.MAX_SEARCHES',1),patch('agent.plan_tool',return_value=call()),patch('agent.stream_completion',side_effect=lambda *a,**k:iter(json_completion(answer,citations=ids))):
+                with self.assertRaises(agent.AgentError):
+                    agent.run_agent('question',answer,self.index)
+                self.assertEqual(self.memory.snapshot(answer)['messages'],[])
 
     def test_memory_after_site_does_not_bypass_citation_gate(self):
         replies=iter([completion(calls=[call('search_memory')],finish='tool_calls'),json_completion('Unsupported factual prose.'),json_completion('Unsupported factual prose.')])
